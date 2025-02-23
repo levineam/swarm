@@ -43,6 +43,10 @@ import {atoms as a, useTheme} from '#/alf'
 import {useDialogControl} from '#/components/Dialog'
 import {ArrowOutOfBox_Stroke2_Corner0_Rounded as ArrowOutOfBox} from '#/components/icons/ArrowOutOfBox'
 import {Bubble_Stroke2_Corner2_Rounded as Bubble} from '#/components/icons/Bubble'
+import {
+  ChevronBottom_Stroke2_Corner0_Rounded as ChevronDown,
+  ChevronTop_Stroke2_Corner0_Rounded as ChevronUp,
+} from '#/components/icons/Chevron'
 import * as Prompt from '#/components/Prompt'
 import {PostDropdownBtn} from '../forms/PostDropdownBtn'
 import {formatCount} from '../numeric/format'
@@ -120,6 +124,8 @@ let PostCtrls = ({
 
   const [hasLikeIconBeenToggled, setHasLikeIconBeenToggled] =
     React.useState(false)
+  const [voteStatus, setVoteStatus] = React.useState<'up' | 'down' | null>(null)
+  const [voteCount, setVoteCount] = React.useState(0)
 
   const onPressToggleLike = React.useCallback(async () => {
     if (isBlocked) {
@@ -252,6 +258,68 @@ let PostCtrls = ({
     [t.atoms.bg_contrast_25],
   )
 
+  const onPressUpvote = React.useCallback(async () => {
+    if (isBlocked) {
+      Toast.show(
+        _(msg`Cannot interact with a blocked user`),
+        'exclamation-circle',
+      )
+      return
+    }
+
+    try {
+      if (voteStatus === 'up') {
+        // Remove upvote
+        setVoteStatus(null)
+        setVoteCount(count => count - 1)
+      } else if (voteStatus === null) {
+        // Add upvote only if no vote exists
+        setVoteStatus('up')
+        setVoteCount(count => count + 1)
+      } else {
+        // If there's a downvote
+        Toast.show(_(msg`You have already voted on this post`))
+      }
+    } catch (e: any) {
+      if (e?.name !== 'AbortError') {
+        throw e
+      }
+    }
+  }, [_, voteStatus, isBlocked])
+
+  const onPressDownvote = React.useCallback(async () => {
+    if (isBlocked) {
+      Toast.show(
+        _(msg`Cannot interact with a blocked user`),
+        'exclamation-circle',
+      )
+      return
+    }
+
+    try {
+      if (voteStatus === 'down') {
+        // Remove downvote
+        setVoteStatus(null)
+        setVoteCount(count => count + 1)
+      } else if (voteStatus === null) {
+        // Add downvote only if no vote exists
+        if (voteCount <= 0) {
+          Toast.show(_(msg`No votes to negate`))
+          return
+        }
+        setVoteStatus('down')
+        setVoteCount(count => count - 1)
+      } else {
+        // If there's an upvote
+        Toast.show(_(msg`You have already voted on this post`))
+      }
+    } catch (e: any) {
+      if (e?.name !== 'AbortError') {
+        throw e
+      }
+    }
+  }, [_, voteStatus, voteCount, isBlocked])
+
   return (
     <View style={[a.flex_row, a.justify_between, a.align_center, style]}>
       <View
@@ -302,6 +370,57 @@ let PostCtrls = ({
           big={big}
           embeddingDisabled={Boolean(post.viewer?.embeddingDisabled)}
         />
+      </View>
+      <View style={big ? a.align_center : [a.flex_1, a.align_start]}>
+        <View style={[a.flex_row, a.align_center, a.gap_xs]}>
+          <Pressable
+            testID="upvoteBtn"
+            style={btnStyle}
+            onPress={() => requireAuth(() => onPressUpvote())}
+            accessibilityRole="button"
+            accessibilityLabel={
+              voteStatus === 'up' ? _(msg`Remove upvote`) : _(msg`Upvote`)
+            }
+            accessibilityHint=""
+            hitSlop={POST_CTRL_HITSLOP}>
+            <ChevronUp
+              width={big ? 22 : 18}
+              style={[
+                defaultCtrlColor,
+                voteStatus === 'up' && {color: t.palette.primary_500},
+              ]}
+            />
+          </Pressable>
+
+          <Text
+            style={[
+              defaultCtrlColor,
+              big ? a.text_md : {fontSize: 15},
+              voteStatus === 'up' && {color: t.palette.primary_500},
+              voteStatus === 'down' && {color: t.palette.negative_500},
+            ]}>
+            {formatCount(i18n, voteCount)}
+          </Text>
+
+          <Pressable
+            testID="downvoteBtn"
+            style={btnStyle}
+            onPress={() => requireAuth(() => onPressDownvote())}
+            accessibilityRole="button"
+            accessibilityLabel={
+              voteStatus === 'down' ? _(msg`Remove downvote`) : _(msg`Downvote`)
+            }
+            accessibilityHint=""
+            hitSlop={POST_CTRL_HITSLOP}>
+            <ChevronDown
+              width={big ? 22 : 18}
+              style={[
+                defaultCtrlColor,
+                voteStatus === 'down' && {color: t.palette.negative_500},
+              ]}
+            />
+          </Pressable>
+        </View>
       </View>
       <View style={big ? a.align_center : [a.flex_1, a.align_start]}>
         <Pressable

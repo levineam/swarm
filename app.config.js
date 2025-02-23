@@ -288,7 +288,7 @@ module.exports = function (config) {
             },
           },
         ],
-        [
+        PLATFORM && [
           '@mozzius/expo-dynamic-app-icon',
           {
             /**
