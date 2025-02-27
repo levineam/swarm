@@ -1,6 +1,6 @@
 import React from 'react'
-import {useCallback, useEffect, useMemo,useState} from 'react'
-import {Text,View} from 'react-native'
+import {useCallback, useEffect, useMemo, useState} from 'react'
+import {Text, View} from 'react-native'
 import {msg} from '@lingui/macro'
 import {useLingui} from '@lingui/react'
 
@@ -21,9 +21,9 @@ import {ButtonIcon} from '#/components/Button'
 import {Hashtag_Stroke2_Corner0_Rounded as FeedsIcon} from '#/components/icons/Hashtag'
 import * as Layout from '#/components/Layout'
 import {Link} from '#/components/Link'
-import {KoinosWalletDisplay} from '../util/KoinosWalletDisplay'
+import {KoinosWalletDisplayNew} from '../util/KoinosWalletDisplayNew'
 import {KoinosWalletImport} from '../util/KoinosWalletImport'
-import {KoinosWalletSection} from '../util/KoinosWalletSection'
+// import {KoinosWalletSection} from '../util/KoinosWalletSection'
 
 export function HomeHeaderLayout(props: {
   children: React.ReactNode
@@ -119,26 +119,32 @@ function HomeHeaderLayoutDesktopAndTablet({
     [currentUser],
   )
 
-  // Update the media query style with larger right values
+  // Add this style block to the head of the document
   useEffect(() => {
-    const style = document.createElement('style');
+    const style = document.createElement('style')
     style.innerHTML = `
-      @media (min-width: 1200px) {
-        .koinos-wallet-container {
-          right: 180px; /* Increased from 130px to 180px to move it more to the left */
-        }
+      .koinos-wallet-container {
+        scrollbar-width: thin;
+        scrollbar-color: #4a5568 #2d3748;
+        overflow-y: scroll !important; /* Force scrolling */
       }
-      @media (max-width: 1199px) {
-        .koinos-wallet-container {
-          right: 120px; /* Increased from 70px to 120px to move it more to the left */
-        }
+      .koinos-wallet-container::-webkit-scrollbar {
+        width: 8px;
       }
-    `;
-    document.head.appendChild(style);
+      .koinos-wallet-container::-webkit-scrollbar-track {
+        background: #2d3748;
+        border-radius: 4px;
+      }
+      .koinos-wallet-container::-webkit-scrollbar-thumb {
+        background-color: #4a5568;
+        border-radius: 4px;
+      }
+    `
+    document.head.appendChild(style)
     return () => {
-      document.head.removeChild(style);
-    };
-  }, []);
+      document.head.removeChild(style)
+    }
+  }, [])
 
   return (
     <>
@@ -173,79 +179,85 @@ function HomeHeaderLayoutDesktopAndTablet({
         {children}
       </Layout.Center>
 
-      <div
-        className="koinos-wallet-container"
-        style={{
-          position: 'fixed',
-          top: '400px',
-          zIndex: 100,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '10px',
-          maxWidth: '300px',
-          padding: '15px',
-          backgroundColor: '#1e2732',
-          borderRadius: '8px',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-        }}>
-        {walletInfo && <KoinosWalletDisplay walletInfo={walletInfo} />}
+      <div style={{position: 'relative'}}>
+        <div
+          className="koinos-wallet-container"
+          style={{
+            position: 'fixed',
+            top: '380px',
+            right: '70px',
+            zIndex: 10,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px',
+            maxWidth: '350px',
+            height: 'calc(100vh - 450px)',
+            overflowY: 'auto',
+            padding: '0',
+            paddingBottom: '20px',
+            backgroundColor: 'transparent',
+            borderRadius: '8px',
+            boxShadow: 'none',
+          }}>
+          {walletInfo && <KoinosWalletDisplayNew walletInfo={walletInfo} />}
 
-        {showImportUI && currentUser?.handle && (
-          <KoinosWalletImport
-            blueskyUsername={currentUser.handle}
-            onImportSuccess={handleImportSuccess}
-            onCancel={() => setShowImportUI(false)}
-          />
-        )}
+          {showImportUI && currentUser?.handle && (
+            <KoinosWalletImport
+              blueskyUsername={currentUser.handle}
+              onImportSuccess={handleImportSuccess}
+              onCancel={() => setShowImportUI(false)}
+            />
+          )}
 
-        {!walletInfo && !showImportUI && currentUser?.handle && (
-          <div
-            className="walletActions"
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '10px',
-            }}>
-            <h3
+          {!walletInfo && !showImportUI && currentUser?.handle && (
+            <div
+              className="walletActions"
               style={{
-                margin: '0 0 10px 0',
-                color: 'white',
-                fontSize: '16px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
               }}>
-              <Text style={{color: 'white'}}>Koinos Wallet</Text>
-            </h3>
+              <h3
+                style={{
+                  margin: '0 0 10px 0',
+                  color: 'white',
+                  fontSize: '16px',
+                }}>
+                <Text style={{color: 'white'}}>Koinos Wallet</Text>
+              </h3>
 
-            <button
-              className="initWalletButton"
-              onClick={() => initializeKoinosWallet(currentUser.handle)}
-              style={{
-                padding: '10px 15px',
-                backgroundColor: '#0070ff',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontWeight: 'bold',
-              }}>
-              <Text style={{color: 'white'}}>Create New Wallet</Text>
-            </button>
+              <button
+                className="initWalletButton"
+                onClick={() => initializeKoinosWallet(currentUser.handle)}
+                style={{
+                  padding: '10px 15px',
+                  backgroundColor: '#0070ff',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                }}>
+                <Text style={{color: 'white'}}>Create New Wallet</Text>
+              </button>
 
-            <button
-              className="importButton"
-              onClick={() => setShowImportUI(true)}
-              style={{
-                padding: '10px 15px',
-                backgroundColor: 'transparent',
-                color: 'white',
-                border: '1px solid white',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontWeight: 'bold',
-              }}>
-              <Text style={{color: 'white'}}>Import Existing Wallet</Text>
-            </button>
-          </div>
-        )}
+              <button
+                className="importButton"
+                onClick={() => setShowImportUI(true)}
+                style={{
+                  padding: '10px 15px',
+                  backgroundColor: 'transparent',
+                  color: 'white',
+                  border: '1px solid white',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                }}>
+                <Text style={{color: 'white'}}>Import Existing Wallet</Text>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </>
   )

@@ -1,5 +1,8 @@
-import React from 'react'
+// Remove the import if React is not used
+
+import {useCallback, useEffect, useMemo,useState} from 'react'
 import {Text} from 'react-native'
+
 import {
   hasWallet,
   linkBlueskyToKoinos,
@@ -7,14 +10,13 @@ import {
   loadWalletAddress,
   saveWalletInfo,
 } from '#/lib/koinos'
-import {useCallback, useState, useEffect, useMemo} from 'react'
 import {useSession} from '#/state/session'
-import {KoinosWalletDisplay} from './KoinosWalletDisplay'
+import {KoinosWalletDisplayNew} from './KoinosWalletDisplayNew'
 import {KoinosWalletImport} from './KoinosWalletImport'
 
 export function KoinosWalletSection() {
   const {currentAccount} = useSession()
-  
+
   // Add wallet state
   const [walletInfo, setWalletInfo] = useState<LinkedWalletInfo | null>(null)
   const [_isCheckingWallet, setIsCheckingWallet] = useState(true)
@@ -93,7 +95,7 @@ export function KoinosWalletSection() {
         padding: '15px',
         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
       }}>
-      {walletInfo && <KoinosWalletDisplay walletInfo={walletInfo} />}
+      {walletInfo && <KoinosWalletDisplayNew walletInfo={walletInfo} />}
 
       {showImportUI && currentUser?.handle && (
         <KoinosWalletImport
@@ -153,4 +155,4 @@ export function KoinosWalletSection() {
       )}
     </div>
   )
-} 
+}
