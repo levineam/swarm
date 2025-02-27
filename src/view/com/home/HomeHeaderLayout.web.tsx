@@ -23,6 +23,7 @@ import * as Layout from '#/components/Layout'
 import {Link} from '#/components/Link'
 import {KoinosWalletDisplay} from '../util/KoinosWalletDisplay'
 import {KoinosWalletImport} from '../util/KoinosWalletImport'
+import {KoinosWalletSection} from '../util/KoinosWalletSection'
 
 export function HomeHeaderLayout(props: {
   children: React.ReactNode
@@ -118,6 +119,27 @@ function HomeHeaderLayoutDesktopAndTablet({
     [currentUser],
   )
 
+  // Update the media query style with larger right values
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.innerHTML = `
+      @media (min-width: 1200px) {
+        .koinos-wallet-container {
+          right: 180px; /* Increased from 130px to 180px to move it more to the left */
+        }
+      }
+      @media (max-width: 1199px) {
+        .koinos-wallet-container {
+          right: 120px; /* Increased from 70px to 120px to move it more to the left */
+        }
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+
   return (
     <>
       {hasSession && (
@@ -151,12 +173,11 @@ function HomeHeaderLayoutDesktopAndTablet({
         {children}
       </Layout.Center>
 
-      {/* Wallet UI */}
       <div
+        className="koinos-wallet-container"
         style={{
           position: 'fixed',
-          bottom: '20px',
-          left: '20px',
+          top: '400px',
           zIndex: 100,
           display: 'flex',
           flexDirection: 'column',
@@ -191,7 +212,7 @@ function HomeHeaderLayoutDesktopAndTablet({
                 color: 'white',
                 fontSize: '16px',
               }}>
-              <Text>Koinos Wallet</Text>
+              <Text style={{color: 'white'}}>Koinos Wallet</Text>
             </h3>
 
             <button
@@ -206,7 +227,7 @@ function HomeHeaderLayoutDesktopAndTablet({
                 cursor: 'pointer',
                 fontWeight: 'bold',
               }}>
-              <Text>Create New Wallet</Text>
+              <Text style={{color: 'white'}}>Create New Wallet</Text>
             </button>
 
             <button
@@ -221,7 +242,7 @@ function HomeHeaderLayoutDesktopAndTablet({
                 cursor: 'pointer',
                 fontWeight: 'bold',
               }}>
-              <Text>Import Existing Wallet</Text>
+              <Text style={{color: 'white'}}>Import Existing Wallet</Text>
             </button>
           </div>
         )}
