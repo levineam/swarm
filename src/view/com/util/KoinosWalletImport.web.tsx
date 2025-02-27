@@ -21,8 +21,11 @@ export function KoinosWalletImport({blueskyUsername, onImportSuccess, onCancel}:
     
     setIsImporting(true)
     try {
-      // Validate and import the private key
-      const signer = new Signer({privateKey})
+      // Validate and import the private key with compressed option
+      const signer = new Signer({
+        privateKey,
+        compressed: true
+      })
       const address = signer.getAddress()
       
       // Save wallet info (only address, not private key)

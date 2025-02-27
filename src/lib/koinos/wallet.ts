@@ -22,27 +22,41 @@ export interface LinkedWalletInfo {
 }
 
 export function generateKoinosWallet(): KoinosWallet {
-  // Generate a random private key
-  const privateKey = Signer.generatePrivateKey()
-  const signer = Signer.fromWif(privateKey)
-  
-  return {
-    privateKeyWif: privateKey,
-    address: signer.getAddress()
+  try {
+    // Generate a random private key
+    const privateKey = Signer.generatePrivateKey()
+    
+    // Create a signer with proper options
+    const signer = new Signer({ 
+      privateKey,
+      // Add the compressed option explicitly
+      compressed: true 
+    })
+    
+    return {
+      privateKeyWif: privateKey,
+      address: signer.getAddress()
+    }
+  } catch (error) {
+    console.error('Error generating Koinos wallet:', error)
+    // Return a fallback or throw a more descriptive error
+    throw new Error('Failed to generate Koinos wallet. Please try again.')
   }
 }
 
 export function linkBlueskyToKoinos(blueskyUsername: string): LinkedWalletInfo {
-  // Remove the @[username].bsky.social part if needed
-  // const cleanUsername = blueskyUsername.replace(/^@/, '').split('.')[0]
-  
-  // Generate a wallet for this user
-  const wallet = generateKoinosWallet()
-  
-  return {
-    blueskyUsername: blueskyUsername,
-    koinosAddress: wallet.address,
-    privateKeyWif: wallet.privateKeyWif
+  try {
+    // Generate a wallet for this user
+    const wallet = generateKoinosWallet()
+    
+    return {
+      blueskyUsername: blueskyUsername,
+      koinosAddress: wallet.address,
+      privateKeyWif: wallet.privateKeyWif
+    }
+  } catch (error) {
+    console.error('Error linking Bluesky to Koinos:', error)
+    throw new Error('Failed to link Bluesky account to Koinos wallet. Please try again.')
   }
 }
 
