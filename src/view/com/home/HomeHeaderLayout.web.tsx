@@ -1,7 +1,17 @@
 import React from 'react'
-import {View} from 'react-native'
+import {View, Text} from 'react-native'
 import {msg} from '@lingui/macro'
 import {useLingui} from '@lingui/react'
+import {KoinosWalletDisplay} from '../util/KoinosWalletDisplay'
+import {KoinosWalletImport} from '../util/KoinosWalletImport'
+import {
+  linkBlueskyToKoinos,
+  saveWalletInfo,
+  hasWallet,
+  loadWalletAddress,
+  LinkedWalletInfo
+} from '#/lib/koinos'
+import {useCallback, useState, useEffect, useMemo} from 'react'
 
 import {useKawaiiMode} from '#/state/preferences/kawaii'
 import {useSession} from '#/state/session'
@@ -35,10 +45,74 @@ function HomeHeaderLayoutDesktopAndTablet({
 }) {
   const t = useTheme()
   const {headerHeight} = useShellLayout()
-  const {hasSession} = useSession()
+  const {hasSession, currentAccount} = useSession()
   const {_} = useLingui()
   const kawaii = useKawaiiMode()
   const gutters = useGutters([0, 'base'])
+
+  // Add wallet state
+  const [walletInfo, setWalletInfo] = useState<LinkedWalletInfo | null>(null)
+  const [_isCheckingWallet, setIsCheckingWallet] = useState(true)
+  const [showImportUI, setShowImportUI] = useState(false)
+  
+  // Get user info - adapt this to how user data is accessed in the web version
+  const currentUser = useMemo(() => 
+    currentAccount ? {handle: currentAccount.handle} : null
+  , [currentAccount])
+  
+  // Check for existing wallet
+  useEffect(() => {
+    const checkWallet = async () => {
+      if (!currentUser?.handle) {
+        setIsCheckingWallet(false)
+        return
+      }
+      
+      setIsCheckingWallet(true)
+      try {
+        const hasExistingWallet = await hasWallet(currentUser.handle)
+        
+        if (hasExistingWallet) {
+          const address = await loadWalletAddress(currentUser.handle)
+          if (address) {
+            setWalletInfo({
+              blueskyUsername: currentUser.handle,
+              koinosAddress: address,
+              privateKeyWif: '(Private key not stored for security)'
+            })
+          }
+        }
+      } catch (error) {
+        console.error('Error checking wallet:', error)
+      } finally {
+        setIsCheckingWallet(false)
+      }
+    }
+    
+    checkWallet()
+  }, [currentUser])
+  
+  // Initialize wallet function
+  const initializeKoinosWallet = useCallback(async (username: string) => {
+    if (!username) return
+    
+    const info = linkBlueskyToKoinos(username)
+    setWalletInfo(info)
+    
+    await saveWalletInfo(info)
+  }, [])
+  
+  // Handle import success
+  const handleImportSuccess = useCallback((address: string) => {
+    if (!currentUser?.handle) return
+    
+    setWalletInfo({
+      blueskyUsername: currentUser.handle,
+      koinosAddress: address,
+      privateKeyWif: '(Private key not stored for security)'
+    })
+    setShowImportUI(false)
+  }, [currentUser])
 
   return (
     <>
@@ -72,6 +146,80 @@ function HomeHeaderLayoutDesktopAndTablet({
         }}>
         {children}
       </Layout.Center>
+      
+      {/* Wallet UI */}
+      <div style={{
+        position: 'fixed',
+        bottom: '20px',
+        left: '20px',
+        zIndex: 100,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        maxWidth: '300px',
+        padding: '15px',
+        backgroundColor: '#1e2732',
+        borderRadius: '8px',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
+      }}>
+        {walletInfo && <KoinosWalletDisplay walletInfo={walletInfo} />}
+        
+        {showImportUI && currentUser?.handle && (
+          <KoinosWalletImport
+            blueskyUsername={currentUser.handle}
+            onImportSuccess={handleImportSuccess}
+            onCancel={() => setShowImportUI(false)}
+          />
+        )}
+        
+        {!walletInfo && !showImportUI && currentUser?.handle && (
+          <div className="walletActions" style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px'
+          }}>
+            <h3 style={{
+              margin: '0 0 10px 0',
+              color: 'white',
+              fontSize: '16px'
+            }}>
+              <Text>Koinos Wallet</Text>
+            </h3>
+            
+            <button 
+              className="initWalletButton"
+              onClick={() => initializeKoinosWallet(currentUser.handle)}
+              style={{
+                padding: '10px 15px',
+                backgroundColor: '#0070ff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              <Text>Create New Wallet</Text>
+            </button>
+            
+            <button 
+              className="importButton"
+              onClick={() => setShowImportUI(true)}
+              style={{
+                padding: '10px 15px',
+                backgroundColor: 'transparent',
+                color: '#0070ff',
+                border: '1px solid #0070ff',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              <Text>Import Existing Wallet</Text>
+            </button>
+          </div>
+        )}
+      </div>
     </>
   )
 }
