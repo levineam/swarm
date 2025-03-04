@@ -138,6 +138,8 @@ import {
 import {NO_VIDEO, NoVideoState, processVideo, VideoState} from './state/video'
 import {getVideoMetadata} from './videos/pickVideo'
 import {clearThumbnailCache} from './videos/VideoTranscodeBackdrop'
+import {applyCommunityLabel} from '#/labels/label_defs'
+import {SwarmCommunityBtn} from '../swarm/SwarmCommunityBtn'
 
 type CancelRef = {
   onPressCancel: () => void
@@ -434,6 +436,16 @@ export const ComposePost = ({
       if (postUri) {
         let index = 0
         for (let post of thread.posts) {
+          // Apply Swarm community label if enabled
+          if (post.isSwarmCommunity) {
+            try {
+              await applyCommunityLabel(agent, postUri)
+              console.log('Applied swarm-community label to post:', postUri)
+            } catch (error) {
+              console.error('Failed to apply swarm-community label:', error)
+            }
+          }
+          
           logEvent('post:create', {
             imageCount:
               post.embed.media?.type === 'images'
@@ -610,6 +622,7 @@ export const ComposePost = ({
   )
 
   const isWebFooterSticky = !isNative && thread.posts.length > 1
+
   return (
     <BottomSheetPortalProvider>
       <VerifyEmailDialog
@@ -1160,6 +1173,19 @@ function ComposerPills({
             }}
           />
         ) : null}
+        <SwarmCommunityBtn
+          isEnabled={post.isSwarmCommunity || false}
+          onChange={(enabled) => {
+            dispatch({
+              type: 'update_post',
+              postId: post.id,
+              postAction: {
+                type: 'update_swarm_community',
+                isSwarmCommunity: enabled,
+              },
+            })
+          }}
+        />
       </ScrollView>
     </Animated.View>
   )
@@ -1515,6 +1541,14 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     marginHorizontal: 10,
     marginBottom: 4,
+  },
+  swarmToggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: colors.gray2,
   },
 })
 

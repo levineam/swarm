@@ -156,6 +156,7 @@
     "hls.js": "^1.5.11",
     "js-sha256": "^0.9.0",
     "jwt-decode": "^4.0.0",
+    "koilib": "^9.1.0",
     "lande": "^1.0.10",
     "lodash.chunk": "^4.2.0",
     "lodash.debounce": "^4.0.8",

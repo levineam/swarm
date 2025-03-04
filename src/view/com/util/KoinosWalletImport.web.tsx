@@ -1,7 +1,7 @@
 import {useState} from 'react'
-import {Signer} from 'koilib'
 import {saveWalletInfo} from '#/lib/koinos'
 import {Text} from 'react-native'
+import { Signer } from 'koilib'
 
 interface Props {
   blueskyUsername: string
@@ -21,27 +21,39 @@ export function KoinosWalletImport({blueskyUsername, onImportSuccess, onCancel}:
     
     setIsImporting(true)
     try {
-      // Validate and import the private key with compressed option
-      const signer = new Signer({
-        privateKey,
-        compressed: true
-      })
-      const address = signer.getAddress()
+      console.log("Importing wallet with key");
       
-      // Save wallet info (only address, not private key)
+      // Create a properly initialized Signer
+      // If the key is in WIF format, use fromWif
+      // Otherwise, treat it as a hex string
+      let signer;
+      try {
+        // Try to use it as a WIF key
+        signer = Signer.fromWif(privateKey.trim());
+      } catch (e) {
+        // If that fails, try as a hex string
+        signer = new Signer({
+          privateKey: privateKey.trim(),
+          compressed: true // Explicitly set compressed
+        });
+      }
+      
+      const address = signer.getAddress();
+      console.log("Address generated:", address);
+      
+      // Save wallet info
       await saveWalletInfo({
         blueskyUsername,
         koinosAddress: address,
-        privateKeyWif: privateKey // This won't actually be saved
-      })
+        privateKeyWif: privateKey
+      });
       
-      // Notify parent component
-      onImportSuccess(address)
+      onImportSuccess(address);
     } catch (error) {
-      console.error('Error importing wallet:', error)
-      alert('Invalid private key. Please check and try again.') // TODO: Replace with proper UI feedback
+      console.error('Error importing wallet:', error);
+      alert('Invalid private key. Please check and try again.');
     } finally {
-      setIsImporting(false)
+      setIsImporting(false);
     }
   }
   

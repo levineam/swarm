@@ -64,11 +64,13 @@ export type PostDraft = {
   labels: SelfLabel[]
   embed: EmbedDraft
   shortenedGraphemeLength: number
+  isSwarmCommunity?: boolean
 }
 
 export type PostAction =
   | {type: 'update_richtext'; richtext: RichText}
   | {type: 'update_labels'; labels: SelfLabel[]}
+  | {type: 'update_swarm_community'; isSwarmCommunity: boolean}
   | {type: 'embed_add_images'; images: ComposerImage[]}
   | {type: 'embed_update_image'; image: ComposerImage}
   | {type: 'embed_remove_image'; image: ComposerImage}
@@ -240,6 +242,12 @@ function postReducer(state: PostDraft, action: PostAction): PostDraft {
       return {
         ...state,
         labels: action.labels,
+      }
+    }
+    case 'update_swarm_community': {
+      return {
+        ...state,
+        isSwarmCommunity: action.isSwarmCommunity,
       }
     }
     case 'embed_add_images': {
@@ -593,6 +601,7 @@ export function createComposerState({
           richtext: initRichText,
           shortenedGraphemeLength: getShortenedLength(initRichText),
           labels: [],
+          isSwarmCommunity: false,
           embed: {
             quote,
             media,

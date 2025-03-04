@@ -130,6 +130,13 @@ export async function post(
       value: record,
     })
 
+    // Apply Swarm community label if enabled
+    if (draft.isSwarmCommunity) {
+      // We'll apply the label after the post is created
+      // This will be handled by the applySwarmCommunityLabelToPost function
+      // which is called in the onPressPublish function
+    }
+
     if (i === 0 && thread.threadgate.some(tg => tg.type !== 'everybody')) {
       writes.push({
         $type: 'com.atproto.repo.applyWrites#create',
