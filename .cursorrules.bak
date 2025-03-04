@@ -1,0 +1,40 @@
+{
+  "name": "Swarm Development Rules",
+  "globs": ["**/*.ts", "**/*.tsx"],
+  "includes": ["src/**/*.ts", "src/**/*.tsx"],
+  "excludes": ["node_modules/**", "dist/**"],
+  "instructions": [
+    {
+      "type": "general",
+      "rules": [
+        "Use TypeScript for type safety and to prevent runtime errors.",
+        "Implement functional components and hooks effectively.",
+        "Prioritize modularity and reusability of code components.",
+        "Handle state using React Context or a state management library like Redux.",
+        "Use the AT Protocol for identity and data storage solutions."
+      ]
+    },
+    {
+      "type": "performance",
+      "rules": [
+        "Optimize the use of state and effects to prevent unnecessary renders.",
+        "Utilize memoization techniques where applicable.",
+        "Handle asynchronous operations using async/await and Promises effectively."
+      ]
+    },
+    {
+      "type": "styling",
+      "rules": [
+        "Use CSS-in-JS solutions like styled-components for styling.",
+        "Ensure that styling is responsive and adaptive to various devices."
+      ]
+    },
+    {
+      "type": "security",
+      "rules": [
+        "Ensure secure storage and transaction processes on the Koinos blockchain.",
+        "Implement proper authentication and authorization mechanisms."
+      ]
+    }
+  ]
+} 
