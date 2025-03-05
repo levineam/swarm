@@ -1,0 +1,12 @@
+{
+  "name": "swarm-feed-generator-scripts",
+  "version": "1.0.0",
+  "description": "Helper scripts for Swarm Feed Generator setup",
+  "private": true,
+  "scripts": {
+    "get-token": "node get-bluesky-token.js"
+  },
+  "dependencies": {
+    "@atproto/api": "^0.6.24"
+  }
+}
