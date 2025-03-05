@@ -123,6 +123,17 @@ This step involves subscribing to real-time posts and caching relevant ones.
      db.prepare('INSERT INTO posts (uri) VALUES (?)').run(post.uri);
      ```
 
+### Execution Summary
+- Implemented the feed generation logic in the `subscription.ts` file
+- Added filtering logic to identify posts from Swarm community members using the `isSwarmCommunityMember` function
+- Configured the subscription to process the AT Protocol firehose events
+- Set up database operations to store post URIs from community members
+- Implemented caching mechanism for posts in the SQLite database
+- The feed generator now properly subscribes to the firehose, filters posts from community members, and stores them for retrieval
+- The implementation follows the AT Protocol standards for feed generators
+
+**Done**
+
 ---
 
 ## Step 4: Create the Algorithm Record
