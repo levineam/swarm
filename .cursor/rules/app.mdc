@@ -1,6 +1,44 @@
 ---
-description: 
+description: This rule defines the implementation guidelines for the Swarm application UI and client-side features.
 globs: 
 alwaysApply: false
 ---
- 
+# Swarm Application
+
+## Description
+This rule defines the implementation guidelines for the Swarm application UI and client-side features.
+
+## Globs
+src/view/**/*.tsx
+src/components/**/*.tsx
+
+## Instructions
+
+### UI Components
+- Follow React Native best practices
+- Use functional components with hooks
+- Implement proper error boundaries
+- Ensure accessibility compliance
+
+### State Management
+- Use React Context for global state
+- Implement proper loading and error states
+- Use optimistic updates for improved UX
+- Cache responses for improved performance
+
+### Navigation
+- Implement proper navigation with React Navigation
+- Support deep linking
+- Handle authentication flows
+- Implement proper error handling
+
+### Swarm Feed
+- Implement the Swarm feed view
+- Support pagination and sorting options
+- Implement proper loading and error states
+- Optimize for performance
+
+## Files
+- src/view/screens/SwarmFeed.tsx
+- src/view/com/swarm/SwarmCommunityBtn.tsx
+- src/Navigation.tsx

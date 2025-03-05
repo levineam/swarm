@@ -1,3 +1,8 @@
+---
+description: This rule defines the implementation guidelines for integrating with the Koinos blockchain in Swarm.
+globs: 
+alwaysApply: false
+---
 # Koinos Blockchain Integration
 
 ## Description

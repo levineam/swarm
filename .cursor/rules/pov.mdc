@@ -1,5 +1,5 @@
 ---
-description: 
+description: This rule defines the implementation guidelines for the Proof of Value (PoV) system in Swarm.
 globs: 
 alwaysApply: false
 ---

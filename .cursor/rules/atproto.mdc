@@ -1,6 +1,34 @@
 ---
-description: 
+description: This rule defines the implementation guidelines for integrating with the AT Protocol in Swarm.
 globs: 
 alwaysApply: false
 ---
- 
+# AT Protocol Integration
+
+## Description
+This rule defines the implementation guidelines for integrating with the AT Protocol in Swarm.
+
+## Globs
+src/atproto/**/*.ts
+
+## Instructions
+
+### Core Integration
+- Use @atproto/api for DIDs (e.g., @user.bsky.social), PDS data, and feed generators
+- Ensure compatibility with Bluesky's app.bsky.* lexicons
+- Handle decentralized identity and data repository interactions
+
+### Feed Implementation
+- Implement "Swarm" feed at at://did:plc:swarm/app.bsky.feed.generator/main-swarm
+- Tag posts with labels (e.g., swarm-community) for community feeds
+- Support pagination and sorting options
+
+### Security & Performance
+- Implement proper authentication and authorization
+- Cache responses for improved performance
+- Handle rate limiting and API errors gracefully
+
+## Files
+- src/atproto/feed_generator.ts
+- src/config/did.ts
+- src/labels/label_defs.ts
