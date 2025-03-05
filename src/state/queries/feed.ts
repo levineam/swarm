@@ -19,7 +19,12 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 
-import {DISCOVER_FEED_URI, DISCOVER_SAVED_FEED} from '#/lib/constants'
+import {
+  DISCOVER_FEED_URI,
+  DISCOVER_SAVED_FEED,
+  SWARM_FEED_URI,
+  SWARM_SAVED_FEED,
+} from '#/lib/constants'
 import {sanitizeDisplayName} from '#/lib/strings/display-names'
 import {sanitizeHandle} from '#/lib/strings/handles'
 import {STALE} from '#/state/queries'
@@ -472,21 +477,22 @@ export function usePinnedFeedsInfos() {
             savedFeed: pinnedItem,
           })
         } else if (pinnedItem.type === 'timeline') {
+          // Replace the "Following" feed with the "Swarm" feed
           result.push({
             type: 'feed',
-            displayName: 'Following',
-            uri: pinnedItem.value,
-            feedDescriptor: 'following',
+            displayName: 'Swarm',
+            uri: SWARM_FEED_URI,
+            feedDescriptor: 'swarm',
             route: {
-              href: '/',
-              name: 'Home',
+              href: '/swarm-feed',
+              name: 'SwarmFeed',
               params: {},
             },
             cid: '',
             avatar: '',
-            description: new RichText({text: ''}),
-            creatorDid: '',
-            creatorHandle: '',
+            description: new RichText({text: 'The main community feed of the Swarm platform'}),
+            creatorDid: 'did:plc:swarm',
+            creatorHandle: 'swarm',
             likeCount: 0,
             likeUri: '',
             savedFeed: pinnedItem,
@@ -494,6 +500,31 @@ export function usePinnedFeedsInfos() {
           })
         }
       }
+      
+      // If there's no pinned timeline item, add the Swarm feed as the first item
+      if (!result.some(item => item.feedDescriptor === 'swarm')) {
+        result.unshift({
+          type: 'feed',
+          displayName: 'Swarm',
+          uri: SWARM_FEED_URI,
+          feedDescriptor: 'swarm',
+          route: {
+            href: '/swarm-feed',
+            name: 'SwarmFeed',
+            params: {},
+          },
+          cid: '',
+          avatar: '',
+          description: new RichText({text: 'The main community feed of the Swarm platform'}),
+          creatorDid: 'did:plc:swarm',
+          creatorHandle: 'swarm',
+          likeCount: 0,
+          likeUri: '',
+          savedFeed: SWARM_SAVED_FEED,
+          contentMode: undefined,
+        });
+      }
+      
       return result
     },
   })

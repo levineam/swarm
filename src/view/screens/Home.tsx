@@ -2,7 +2,6 @@ import React from 'react'
 import {ActivityIndicator, StyleSheet} from 'react-native'
 import {useFocusEffect} from '@react-navigation/native'
 
-import {PROD_DEFAULT_FEED} from '#/lib/constants'
 import {useNonReactiveCallback} from '#/lib/hooks/useNonReactiveCallback'
 import {useOTAUpdates} from '#/lib/hooks/useOTAUpdates'
 import {useSetTitle} from '#/lib/hooks/useSetTitle'
@@ -230,11 +229,11 @@ function HomeScreenReady({
       {pinnedFeedInfos.length ? (
         pinnedFeedInfos.map((feedInfo, index) => {
           const feed = feedInfo.feedDescriptor
-          if (feed === 'following') {
+          if (feed === 'following' || feed === 'swarm') {
             return (
               <FeedPage
                 key={feed}
-                testID="followingFeedPage"
+                testID={feed === 'following' ? "followingFeedPage" : "swarmFeedPage"}
                 isPageFocused={maybeSelectedFeed === feed}
                 isPageAdjacent={Math.abs(selectedIndex - index) === 1}
                 feed={feed}
@@ -273,7 +272,7 @@ function HomeScreenReady({
         testID="customFeedPage"
         isPageFocused
         isPageAdjacent={false}
-        feed={`feedgen|${PROD_DEFAULT_FEED('whats-hot')}`}
+        feed="swarm"
         renderEmptyState={renderCustomFeedEmptyState}
         feedInfo={pinnedFeedInfos[0]}
       />

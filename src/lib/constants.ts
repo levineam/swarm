@@ -130,6 +130,8 @@ export const VIDEO_FEED_URI =
   'at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/thevids'
 export const STAGING_VIDEO_FEED_URI =
   'at://did:plc:yofh3kx63drvfljkibw5zuxo/app.bsky.feed.generator/thevids'
+export const SWARM_FEED_URI =
+  'at://did:plc:swarm/app.bsky.feed.generator/main-swarm'
 export const VIDEO_FEED_URIS = [VIDEO_FEED_URI, STAGING_VIDEO_FEED_URI]
 export const DISCOVER_SAVED_FEED = {
   type: 'feed',
@@ -146,11 +148,17 @@ export const VIDEO_SAVED_FEED = {
   value: VIDEO_FEED_URI,
   pinned: true,
 }
+export const SWARM_SAVED_FEED = {
+  type: 'feed',
+  value: SWARM_FEED_URI,
+  pinned: true,
+  id: 'swarm-feed',
+}
 
 export const RECOMMENDED_SAVED_FEEDS: Pick<
   AppBskyActorDefs.SavedFeed,
   'type' | 'value' | 'pinned'
->[] = [DISCOVER_SAVED_FEED, TIMELINE_SAVED_FEED]
+>[] = [SWARM_SAVED_FEED, DISCOVER_SAVED_FEED]
 
 export const KNOWN_SHUTDOWN_FEEDS = [
   'at://did:plc:wqowuobffl66jv3kpsvo7ak4/app.bsky.feed.generator/the-algorithm', // for you by skygaze

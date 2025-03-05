@@ -26,8 +26,11 @@ import {MergeFeedAPI} from '#/lib/api/feed/merge'
 import {FeedAPI, ReasonFeedSource} from '#/lib/api/feed/types'
 import {aggregateUserInterests} from '#/lib/api/feed/utils'
 import {FeedTuner, FeedTunerFn} from '#/lib/api/feed-manip'
-import {DISCOVER_FEED_URI} from '#/lib/constants'
-import {BSKY_FEED_OWNER_DIDS} from '#/lib/constants'
+import {
+  DISCOVER_FEED_URI,
+  BSKY_FEED_OWNER_DIDS,
+  SWARM_FEED_URI,
+} from '#/lib/constants'
 import {logger} from '#/logger'
 import {STALE} from '#/state/queries'
 import {DEFAULT_LOGGED_OUT_PREFERENCES} from '#/state/queries/preferences/const'
@@ -55,6 +58,7 @@ type ListUri = string
 
 export type FeedDescriptor =
   | 'following'
+  | 'swarm'
   | `author|${ActorDid}|${AuthorFilter}`
   | `feedgen|${FeedUri}`
   | `likes|${ActorDid}`
@@ -467,6 +471,13 @@ function createApi({
         return new FollowingFeedAPI({agent})
       }
     }
+  } else if (feedDesc === 'swarm') {
+    // Use the custom feed API with our Swarm feed URI
+    return new CustomFeedAPI({
+      agent,
+      feedParams: {feed: SWARM_FEED_URI},
+      userInterests,
+    })
   } else if (feedDesc.startsWith('author')) {
     const [_, actor, filter] = feedDesc.split('|')
     return new AuthorFeedAPI({agent, feedParams: {actor, filter}})
