@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: swarm-feed-generator
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: FEEDGEN_HOSTNAME
+        fromService:
+          name: swarm-feed-generator
+          type: web
+          property: host
+      - key: FEEDGEN_PUBLISHER_DID
+        value: did:plc:ouadmsyvsfcpkxg3yyz4trqi
+      - key: FEEDGEN_LABELS_ENABLED
+        value: false
+      - key: FEEDGEN_SERVICE_DID
+        value: did:web:feed.swarm.example.com
+      - key: FEEDGEN_SUBSCRIPTION_ENDPOINT
+        value: wss://bsky.network
+      - key: DATABASE_URL
+        value: sqlite:swarm-feed.db
+      - key: BLUESKY_ACCESS_TOKEN
+        sync: false
+      - key: BLUESKY_USERNAME
+        sync: false
+      - key: BLUESKY_PASSWORD
+        sync: false 
