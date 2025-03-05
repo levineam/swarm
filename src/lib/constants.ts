@@ -130,8 +130,7 @@ export const VIDEO_FEED_URI =
   'at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/thevids'
 export const STAGING_VIDEO_FEED_URI =
   'at://did:plc:yofh3kx63drvfljkibw5zuxo/app.bsky.feed.generator/thevids'
-export const SWARM_FEED_URI =
-  'at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/swarm-community'
+export const SWARM_FEED_URI = DISCOVER_FEED_URI;  // Use the existing discover feed until we have our own
 export const VIDEO_FEED_URIS = [VIDEO_FEED_URI, STAGING_VIDEO_FEED_URI]
 export const DISCOVER_SAVED_FEED = {
   type: 'feed',
