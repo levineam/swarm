@@ -12,7 +12,7 @@ import { COMMUNITY_LABEL_NAME } from '../labels/label_defs';
 
 // Feed generator constants
 export const FEED_GENERATOR_TYPE = 'app.bsky.feed.generator';
-export const FEED_RECORD_KEY = 'main-swarm';
+export const FEED_RECORD_KEY = 'swarm-community';
 export const FEED_URI = `at://${PLATFORM_DID}/${FEED_GENERATOR_TYPE}/${FEED_RECORD_KEY}`;
 
 // Feed metadata

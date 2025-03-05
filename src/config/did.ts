@@ -5,12 +5,12 @@ import { logger } from '#/logger';
  * Swarm Platform DID Configuration
  * 
  * This file manages the Decentralized Identifier (DID) for the Swarm platform.
- * The DID (did:plc:swarm) uniquely identifies the platform in the AT Protocol ecosystem
+ * The DID uniquely identifies the platform in the AT Protocol ecosystem
  * and is essential for managing feeds and other platform-specific resources.
  */
 
 // Platform DID for the Swarm application
-export const PLATFORM_DID = 'did:plc:swarm';
+export const PLATFORM_DID = 'did:plc:z72i7hdynmk6r22z27h6tvur';
 
 /**
  * Initializes an ATP agent with the platform credentials
