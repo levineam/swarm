@@ -1,11 +1,11 @@
 {
-  "did": "did:plc:example-placeholder-did",
-  "note": "This is a placeholder. Replace with your actual DID after account creation or login.",
-  "createdAt": "2025-03-05T19:47:22.223Z",
+  "did": "did:plc:ouadmsyvsfcpkxg3yyz4trqi",
+  "handle": "andrarchy.bsky.social",
+  "createdAt": "2025-03-05T22:01:32.191Z",
+  "note": "This is the DID for your Swarm feed generator.",
   "instructions": [
-    "Create a Bluesky account for your feed generator",
-    "Login with the account credentials",
-    "Use the DID from the session for your feed generator",
-    "Update this file with the actual DID information"
+    "Use this DID in your feed generator configuration",
+    "Update the FEEDGEN_PUBLISHER_DID in your .env file",
+    "Use this DID when creating the algorithm record"
   ]
 }

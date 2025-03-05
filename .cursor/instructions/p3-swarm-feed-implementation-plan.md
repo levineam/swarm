@@ -74,6 +74,15 @@ A unique DID gives your feed generator its own identity in the AT Protocol.
    - Use the `@did-plc/lib` library to craft a genesis operation and submit it to [plc.directory](https://web.plc.directory). Refer to the [did-method-plc GitHub](https://github.com/did-method-plc/did-method-plc) for details.
    - After submission, you'll get a DID like `did:plc:unique-string`. Record this as `YOUR_FEED_DID`.
 
+### Execution Summary
+- Updated the existing `create-did.js` script to use our Bluesky account credentials
+- Successfully ran the script and obtained the DID: `did:plc:ouadmsyvsfcpkxg3yyz4trqi`
+- Saved the DID information to `did-info.json`
+- Updated the `.env` file with the correct DID in the `FEEDGEN_PUBLISHER_DID` field
+- Added Bluesky credentials to the `.env` file for publishing the feed generator
+
+**Done**
+
 ---
 
 ## Step 3: Deploy the Feed Generator Server Publicly with HTTPS
