@@ -61,6 +61,7 @@ import {SavedFeeds} from '#/view/screens/SavedFeeds'
 import {SearchScreen} from '#/view/screens/Search'
 import {Storybook} from '#/view/screens/Storybook'
 import {SupportScreen} from '#/view/screens/Support'
+import {SwarmFeedScreen} from '#/view/screens/SwarmFeed'
 import {TermsOfServiceScreen} from '#/view/screens/TermsOfService'
 import {BottomBar} from '#/view/shell/bottom-bar/BottomBar'
 import {createNativeStackNavigatorWithAuth} from '#/view/shell/createNativeStackNavigatorWithAuth'
@@ -446,6 +447,14 @@ function commonScreens(Stack: typeof HomeTab, unreadCountLabel?: string) {
         options={{
           title: title(msg`Video Feed`),
           requireAuth: true,
+        }}
+      />
+      <Stack.Screen
+        name="SwarmFeed"
+        getComponent={() => SwarmFeedScreen}
+        options={{
+          title: title(msg`Swarm Community`),
+          headerShown: false,
         }}
       />
     </>

@@ -5,11 +5,12 @@ import {msg, Trans} from '@lingui/macro'
 import {useLingui} from '@lingui/react'
 import {useFocusEffect} from '@react-navigation/native'
 import debounce from 'lodash.debounce'
+import {useNavigation} from '@react-navigation/native'
 
 import {usePalette} from '#/lib/hooks/usePalette'
 import {useWebMediaQueries} from '#/lib/hooks/useWebMediaQueries'
 import {ComposeIcon2} from '#/lib/icons'
-import {CommonNavigatorParams, NativeStackScreenProps} from '#/lib/routes/types'
+import {CommonNavigatorParams, NativeStackScreenProps, NavigationProp} from '#/lib/routes/types'
 import {cleanError} from '#/lib/strings/errors'
 import {s} from '#/lib/styles'
 import {isNative, isWeb} from '#/platform/detection'
@@ -43,6 +44,7 @@ import {SettingsGear2_Stroke2_Corner0_Rounded as Gear} from '#/components/icons/
 import * as Layout from '#/components/Layout'
 import {Link} from '#/components/Link'
 import * as ListCard from '#/components/ListCard'
+import {Swarm_Stroke2_Corner0_Rounded} from '#/components/icons/Swarm'
 
 type Props = NativeStackScreenProps<CommonNavigatorParams, 'Feeds'>
 
@@ -101,9 +103,14 @@ type FlatlistSlice =
     }
 
 export function FeedsScreen(_props: Props) {
+  const {_} = useLingui()
   const pal = usePalette('default')
+  const {isTabletOrDesktop} = useWebMediaQueries()
+  const setMinimalShellMode = useSetMinimalShellMode()
   const {openComposer} = useComposerControls()
-  const {isMobile} = useWebMediaQueries()
+  const {hasSession} = useSession()
+  const listRef = React.useRef<ListMethods>(null)
+  const navigation = useNavigation<NavigationProp>()
   const [query, setQuery] = React.useState('')
   const [isPTR, setIsPTR] = React.useState(false)
   const {
@@ -121,8 +128,6 @@ export function FeedsScreen(_props: Props) {
     isFetchingNextPage: isPopularFeedsFetchingNextPage,
     hasNextPage: hasNextPopularFeedsPage,
   } = useGetPopularFeedsQuery()
-  const {_} = useLingui()
-  const setMinimalShellMode = useSetMinimalShellMode()
   const {
     data: searchResults,
     mutate: search,
@@ -130,8 +135,6 @@ export function FeedsScreen(_props: Props) {
     isPending: isSearchPending,
     error: searchError,
   } = useSearchPopularFeedsMutation()
-  const {hasSession} = useSession()
-  const listRef = React.useRef<ListMethods>(null)
 
   /**
    * A search query is present. We may not have search results yet.
@@ -392,8 +395,8 @@ export function FeedsScreen(_props: Props) {
           // web implementation only supports scrollToOffset
           // thus, we calculate the offset based on the index
           // pixel values are estimates, I wasn't able to get it pixel perfect :(
-          const headerHeight = isMobile ? 43 : 53
-          const feedItemHeight = isMobile ? 49 : 58
+          const headerHeight = isTabletOrDesktop ? 43 : 53
+          const feedItemHeight = isTabletOrDesktop ? 49 : 58
           listRef.current?.scrollToOffset({
             offset: searchBarIndex * feedItemHeight - headerHeight,
             animated: true,
@@ -401,7 +404,7 @@ export function FeedsScreen(_props: Props) {
         }
       }
     },
-    [searchBarIndex, isMobile],
+    [searchBarIndex, isTabletOrDesktop],
   )
 
   const renderItem = React.useCallback(
@@ -436,6 +439,7 @@ export function FeedsScreen(_props: Props) {
         return (
           <>
             <FeedsAboutHeader />
+            <SwarmCommunityLink />
             <View style={{paddingHorizontal: 12, paddingBottom: 4}}>
               <SearchInput
                 placeholder={_(msg`Search feeds`)}
@@ -515,11 +519,7 @@ export function FeedsScreen(_props: Props) {
               label={_(msg`Edit My Feeds`)}
               size="small"
               variant="ghost"
-              color="secondary"
-              shape="round"
-              style={[a.justify_center, {right: -3}]}>
-              <ButtonIcon icon={Gear} size="lg" />
-            </Link>
+            />
           </Layout.Header.Slot>
         </Layout.Header.Outer>
 
@@ -707,31 +707,87 @@ function FeedsSavedHeader() {
 }
 
 function FeedsAboutHeader() {
-  const t = useTheme()
+  const {_} = useLingui()
+  const navigation = useNavigation<NavigationProp>()
+  const theme = useTheme()
 
   return (
-    <View
-      style={
-        isWeb
-          ? [a.flex_row, a.px_md, a.pt_lg, a.pb_lg, a.gap_md]
-          : [{flexDirection: 'row-reverse'}, a.p_lg, a.gap_md]
-      }>
+    <View style={[a.gap_sm, a.pb_lg]}>
+      <Link
+        to="/search/popular-feeds"
+        style={[a.flex_row, a.align_center, a.gap_sm, a.py_md, a.px_lg]}>
+        <IconCircle size="md" icon={ListMagnifyingGlass_Stroke2_Corner0_Rounded} />
+        <View style={[a.flex_1]}>
+          <Text style={[a.font_bold, a.text_md]}>
+            {_(msg`Discover feeds`)}
+          </Text>
+          <Text style={[a.text_sm, theme.atoms.text_contrast_medium]}>
+            {_(msg`Find feeds created by the community`)}
+          </Text>
+        </View>
+        <ChevronRight size="md" style={theme.atoms.text_contrast_medium} />
+      </Link>
+
+      <Link
+        to="/swarm-feed"
+        onPress={e => {
+          if (isNative) {
+            e.preventDefault()
+            navigation.navigate('SwarmFeed')
+          }
+        }}
+        style={[a.flex_row, a.align_center, a.gap_sm, a.py_md, a.px_lg]}>
+        <IconCircle
+          size="md"
+          icon={Swarm_Stroke2_Corner0_Rounded}
+          style={[{backgroundColor: theme.palette.blue2}]}
+          iconStyle={[{color: theme.palette.blue3}]}
+        />
+        <View style={[a.flex_1]}>
+          <Text style={[a.font_bold, a.text_md]}>
+            {_(msg`Swarm Community`)}
+          </Text>
+          <Text style={[a.text_sm, theme.atoms.text_contrast_medium]}>
+            {_(msg`Posts from the Swarm community`)}
+          </Text>
+        </View>
+        <ChevronRight size="md" style={theme.atoms.text_contrast_medium} />
+      </Link>
+    </View>
+  )
+}
+
+function SwarmCommunityLink() {
+  const {_} = useLingui()
+  const navigation = useNavigation<NavigationProp>()
+  const theme = useTheme()
+  const colors = usePalette('default')
+
+  return (
+    <Link
+      to="SwarmFeed"
+      onPress={e => {
+        if (isNative) {
+          e.preventDefault()
+          navigation.navigate('SwarmFeed')
+        }
+      }}
+      style={[a.flex_row, a.align_center, a.gap_sm, a.py_md, a.px_lg]}>
       <IconCircle
-        icon={ListMagnifyingGlass_Stroke2_Corner0_Rounded}
-        size="lg"
+        size="md"
+        icon={Swarm_Stroke2_Corner0_Rounded}
+        style={[{backgroundColor: colors.purple2}]}
       />
-      <View style={[a.flex_1, a.gap_sm]}>
-        <Text style={[a.flex_1, a.text_2xl, a.font_heavy, t.atoms.text]}>
-          <Trans>Discover New Feeds</Trans>
+      <View style={[a.flex_1]}>
+        <Text style={[a.font_bold, a.text_md]}>
+          {_(msg`Swarm Community`)}
         </Text>
-        <Text style={[t.atoms.text_contrast_high]}>
-          <Trans>
-            Choose your own timeline! Feeds built by the community help you find
-            content you love.
-          </Trans>
+        <Text style={[a.text_sm, theme.atoms.text_contrast_medium]}>
+          {_(msg`Posts from the Swarm community`)}
         </Text>
       </View>
-    </View>
+      <ChevronRight size="md" style={theme.atoms.text_contrast_medium} />
+    </Link>
   )
 }
 

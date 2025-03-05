@@ -60,6 +60,7 @@ export type CommonNavigatorParams = {
   MessagesSettings: undefined
   NotificationSettings: undefined
   Feeds: undefined
+  SwarmFeed: undefined
   Start: {name: string; rkey: string}
   StarterPack: {name: string; rkey: string; new?: boolean}
   StarterPackShort: {code: string}
