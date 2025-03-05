@@ -84,6 +84,19 @@ The server will host your feed generation logic and respond to requests from cli
      ```
    - Ensure the `getFeedSkeleton` endpoint returns URIs of these posts.
 
+### Execution Summary
+- Cloned the Bluesky feed generator repository as a starting point
+- Installed all required dependencies for the feed generator
+- Created a `swarm-community-members.ts` file to store the list of community members
+- Implemented a new algorithm file `swarm-community.ts` for the Swarm community feed
+- Updated `algos/index.ts` to register our new Swarm community feed algorithm
+- Modified `subscription.ts` to filter posts from Swarm community members
+- Created a `.env` configuration file for the feed generator
+- The implementation filters posts based on whether the author is in the `SWARM_COMMUNITY_MEMBERS` list
+- The feed generator is configured to run on localhost:3000 with a placeholder DID
+
+**Done**
+
 ---
 
 ## Step 3: Implement Feed Generation Logic
