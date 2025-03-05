@@ -2,6 +2,7 @@ import { AtpAgent, BskyAgent } from '@atproto/api';
 import { logger } from '#/logger';
 import { PLATFORM_DID } from '#/config/did';
 import { COMMUNITY_LABEL_NAME } from '../labels/label_defs';
+import { SWARM_COMMUNITY_MEMBERS } from '../lib/swarm-community';
 
 /**
  * Swarm Feed Generator
@@ -215,4 +216,21 @@ export const initializeSwarmFeed = async (): Promise<void> => {
     logger.error('Failed to initialize Swarm feed', { error });
     throw error;
   }
-}; 
+};
+
+// Update the feed generation logic to filter for Swarm community members
+export async function generateFeed(
+  params: QueryParams,
+): Promise<FeedViewPost[]> {
+  // ... existing code to fetch posts ...
+
+  // Filter posts to only include those from Swarm community members
+  if (params.feed === 'swarm-community') {
+    return posts.filter(post => 
+      SWARM_COMMUNITY_MEMBERS.includes(post.post.author.did)
+    );
+  }
+
+  // Return all posts for other feed types
+  return posts;
+} 

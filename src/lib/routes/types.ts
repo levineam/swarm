@@ -67,6 +67,7 @@ export type CommonNavigatorParams = {
   StarterPackWizard: undefined
   StarterPackEdit: {rkey?: string}
   VideoFeed: VideoFeedSourceContext
+  SwarmCommunitySettings: undefined
 }
 
 export type BottomTabNavigatorParams = CommonNavigatorParams & {

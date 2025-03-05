@@ -17,6 +17,7 @@ import {FeedDescriptor} from '#/state/queries/post-feed'
 import {Text} from '#/view/com/util/text/Text'
 import {Header} from '#/components/Layout'
 import {Swarm_Stroke2_Corner0_Rounded} from '#/components/icons/Swarm'
+import { Link } from '#/view/com/util/Link'
 
 type Props = NativeStackScreenProps<CommonNavigatorParams, 'SwarmFeed'>
 
@@ -101,6 +102,9 @@ export function SwarmFeedScreen({navigation}: Props) {
         <Header.BackButton onPress={() => navigation.goBack()} />
         <Header.Content>
           <Header.TitleText>{_(msg`Swarm Community`)}</Header.TitleText>
+          <Link to="SwarmCommunitySettings" label="Settings">
+            <Text style={{ color: pal.palette.primary }}>Settings</Text>
+          </Link>
         </Header.Content>
       </Header.Outer>
       <FeedPage

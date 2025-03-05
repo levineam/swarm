@@ -105,6 +105,7 @@ import {PrivacyAndSecuritySettingsScreen} from './screens/Settings/PrivacyAndSec
 import {SettingsScreen} from './screens/Settings/Settings'
 import {ThreadPreferencesScreen} from './screens/Settings/ThreadPreferences'
 import TopicScreen from './screens/Topic'
+import { SwarmCommunitySettingsScreen } from './view/screens/SwarmCommunitySettings'
 
 const navigationRef = createNavigationContainerRef<AllNavigatorParams>()
 
@@ -456,6 +457,10 @@ function commonScreens(Stack: typeof HomeTab, unreadCountLabel?: string) {
           title: title(msg`Swarm Community`),
           headerShown: false,
         }}
+      />
+      <Stack.Screen
+        name="SwarmCommunitySettings"
+        component={SwarmCommunitySettingsScreen}
       />
     </>
   )
