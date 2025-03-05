@@ -1,1 +1,28 @@
- 
+# Koinos Blockchain Integration
+
+## Description
+This rule defines the implementation guidelines for integrating with the Koinos blockchain in Swarm.
+
+## Globs
+src/koinos/**/*.ts
+
+## Instructions
+
+### Wallet Integration
+- Use koilib for wallet linking, SWARM token transactions, and bonding curve logic
+- Auto-map Bluesky accounts to Koinos wallets
+- Ensure secure handling of private keys and transaction signing
+
+### API Integration
+- Call Koinos REST API (e.g., /v1/account/{account}/balance) for balances and transactions
+- Implement proper error handling for API calls
+- Cache responses for improved performance
+
+### Token Implementation
+- Implement PoV token minting with 6-month lock and kusd.koin bonding curve
+- Create secure transaction signing flow
+- Implement proper validation and error handling
+
+## Files
+- src/koinos/wallet_manager.ts
+- src/koinos/pov_contract.ts 

@@ -1,1 +1,32 @@
- 
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Proof of Value (PoV) Logic
+
+## Description
+This rule defines the implementation guidelines for the Proof of Value (PoV) system in Swarm.
+
+## Globs
+src/pov/**/*.ts
+
+## Instructions
+
+### Token System
+- Mint SWARM tokens from Positive Values (likes), counter with Negative Values (dislikes)
+- Lock tokens for 6 months, integrate bonding curve with kusd.koin
+- Start with a simple PoV implementation, iterate based on feedback
+
+### Implementation
+- Use Koinos smart contracts via koilib for token distribution
+- Ensure PoV logic is modular for future custom implementations
+- Implement secure transaction handling and verification
+
+### Integration
+- Connect with AT Protocol for social actions (likes, reposts)
+- Ensure proper error handling for blockchain interactions
+- Implement caching for improved performance
+
+## Files
+- src/pov/pov_logic.ts 
