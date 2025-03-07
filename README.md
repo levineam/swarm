@@ -10,6 +10,10 @@ There is a small amount of Go language source code (in `./bskyweb/`), for a web 
 
 The [Build Instructions](./docs/build.md) are a good place to get started with the app itself.
 
+### Architecture Documentation
+
+For a high-level overview of the Swarm Community Platform architecture, implementation status, and development roadmap, see the [Technical Architecture & Implementation Plan](.cursor/architecture/swarm-technical-architecture.md).
+
 The Authenticated Transfer Protocol ("AT Protocol" or "atproto") is a decentralized social media protocol. You don't *need* to understand AT Protocol to work with this application, but it can help. Learn more at:
 
 - [Overview and Guides](https://atproto.com/guides/overview)

@@ -7,5 +7,8 @@
     "Use this DID in your feed generator configuration",
     "Update the FEEDGEN_PUBLISHER_DID in your .env file",
     "Use this DID when creating the algorithm record"
-  ]
+  ],
+  "serviceEndpoint": "https://swarm-social.onrender.com",
+  "updatedAt": "2025-03-07T14:55:33.120Z",
+  "algorithmUri": "at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.generator/swarm-community"
 }
