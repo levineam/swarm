@@ -10,6 +10,12 @@ There is a small amount of Go language source code (in `./bskyweb/`), for a web 
 
 The [Build Instructions](./docs/build.md) are a good place to get started with the app itself.
 
+### Deployment
+
+For deploying the application to production environments:
+
+- [Render Deployment Guide](./docs/render-deployment.md) - Instructions for deploying to Render cloud platform
+
 ### Architecture Documentation
 
 For a high-level overview of the Swarm Community Platform architecture, implementation status, and development roadmap, see the [Technical Architecture & Implementation Plan](.cursor/architecture/swarm-technical-architecture.md).
