@@ -204,6 +204,16 @@ Integrate the feed into your client.
 2. **Verify Configuration**:
    - Ensure the client points to the correct DID and server.
 
+### Execution Summary
+- Updated the `SWARM_FEED_URI` constant in `src/lib/constants.ts` with our new feed URI
+- Updated the `FEED_URI` constant in `src/server/feed_generator.ts` with our new feed URI
+- Updated the `FEED_RECORD_KEY` to match our feed generator record key
+- Fixed type issues and linter errors in the feed generator code
+- Improved the feed post filtering logic for Swarm community members
+- Ensured the client application will use the correct feed URI when displaying the Swarm community feed
+
+**Done**
+
 ---
 
 ## Step 7: Test in a Real-World Environment
