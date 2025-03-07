@@ -18,63 +18,91 @@ async function checkDeployedService() {
 
     console.log(`Checking deployed feed generator service at ${serviceUrl}...`)
 
-    // Check the describeFeedGenerator endpoint
+    // Check the describeFeedGenerator endpoint with a timeout
     console.log('\nTesting describeFeedGenerator endpoint...')
-    const describeResponse = await fetch(
-      `${serviceUrl}/xrpc/app.bsky.feed.describeFeedGenerator`,
-    )
 
-    if (!describeResponse.ok) {
-      console.error(
-        `Error: describeFeedGenerator endpoint returned ${describeResponse.status}`,
+    try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+
+      const describeResponse = await fetch(
+        `${serviceUrl}/xrpc/app.bsky.feed.describeFeedGenerator`,
+        { signal: controller.signal },
       )
-      console.error(await describeResponse.text())
-      process.exit(1)
-    }
 
-    const describeData = await describeResponse.json()
-    console.log('describeFeedGenerator response:')
-    console.log(JSON.stringify(describeData, null, 2))
+      clearTimeout(timeout)
 
-    // Check if the feed URI is correct
-    const feedUri = `at://${publisherDid}/app.bsky.feed.generator/swarm-community`
-    const hasFeed = describeData.feeds.some((feed) => feed.uri === feedUri)
+      if (!describeResponse.ok) {
+        console.error(
+          `Error: describeFeedGenerator endpoint returned ${describeResponse.status}`,
+        )
+        console.error(await describeResponse.text())
+        process.exit(1)
+      }
 
-    if (!hasFeed) {
-      console.warn(
-        `Warning: Feed URI ${feedUri} not found in describeFeedGenerator response`,
+      const describeData = await describeResponse.json()
+      console.log('describeFeedGenerator response:')
+      console.log(JSON.stringify(describeData, null, 2))
+
+      // Check if the feed URI is correct
+      const feedUri = `at://${publisherDid}/app.bsky.feed.generator/swarm-community`
+      const hasFeed = describeData.feeds.some((feed) => feed.uri === feedUri)
+
+      if (!hasFeed) {
+        console.warn(
+          `Warning: Feed URI ${feedUri} not found in describeFeedGenerator response`,
+        )
+      } else {
+        console.log(
+          `✅ Feed URI ${feedUri} found in describeFeedGenerator response`,
+        )
+      }
+
+      // Check the getFeedSkeleton endpoint
+      console.log('\nTesting getFeedSkeleton endpoint...')
+
+      const skeletonController = new AbortController()
+      const skeletonTimeout = setTimeout(
+        () => skeletonController.abort(),
+        30000,
+      ) // 30 second timeout
+
+      const skeletonResponse = await fetch(
+        `${serviceUrl}/xrpc/app.bsky.feed.getFeedSkeleton?feed=${encodeURIComponent(
+          feedUri,
+        )}`,
+        { signal: skeletonController.signal },
       )
-    } else {
-      console.log(
-        `✅ Feed URI ${feedUri} found in describeFeedGenerator response`,
-      )
-    }
 
-    // Check the getFeedSkeleton endpoint
-    console.log('\nTesting getFeedSkeleton endpoint...')
-    const skeletonResponse = await fetch(
-      `${serviceUrl}/xrpc/app.bsky.feed.getFeedSkeleton?feed=${encodeURIComponent(
-        feedUri,
-      )}`,
-    )
+      clearTimeout(skeletonTimeout)
 
-    if (!skeletonResponse.ok) {
-      console.error(
-        `Error: getFeedSkeleton endpoint returned ${skeletonResponse.status}`,
-      )
-      console.error(await skeletonResponse.text())
-      process.exit(1)
-    }
+      if (!skeletonResponse.ok) {
+        console.error(
+          `Error: getFeedSkeleton endpoint returned ${skeletonResponse.status}`,
+        )
+        console.error(await skeletonResponse.text())
+        process.exit(1)
+      }
 
-    const skeletonData = await skeletonResponse.json()
-    console.log('getFeedSkeleton response:')
-    console.log(JSON.stringify(skeletonData, null, 2))
+      const skeletonData = await skeletonResponse.json()
+      console.log('getFeedSkeleton response:')
+      console.log(JSON.stringify(skeletonData, null, 2))
 
-    console.log('\n✅ Deployed feed generator service is running correctly!')
+      console.log('\n✅ Deployed feed generator service is running correctly!')
 
-    return {
-      describeFeedGenerator: describeData,
-      getFeedSkeleton: skeletonData,
+      return {
+        describeFeedGenerator: describeData,
+        getFeedSkeleton: skeletonData,
+      }
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        console.error(
+          'Request timed out after 30 seconds. The service might be starting up or under heavy load.',
+        )
+      } else {
+        console.error(`Error checking endpoint: ${error.message}`)
+      }
+      throw error
     }
   } catch (error) {
     console.error('Error checking deployed service:', error.message)
