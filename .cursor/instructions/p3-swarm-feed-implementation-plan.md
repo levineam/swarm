@@ -138,6 +138,15 @@ Link your server to the DID by updating the DID document.
 2. **Verify the Update**:
    - Check `https://plc.directory/YOUR_FEED_DID` to confirm the service endpoint is set.
 
+### Execution Summary
+- Created scripts to help with updating the DID document and creating the algorithm record
+- Discovered that the AT Protocol now handles DID document updates automatically when creating algorithm records
+- Successfully created the algorithm record for the Swarm Community feed generator
+- Verified that the record exists and is accessible
+- The feed generator is now properly registered with the AT Protocol
+
+**Done**
+
 ---
 
 ## Step 5: Create the Algorithm Record
@@ -167,6 +176,18 @@ Register your feed generator in the AT Protocol ecosystem.
 
 2. **Note the Record URI**:
    - The URI will be `at://YOUR_FEED_DID/app.bsky.feed.generator/swarm-community`.
+
+### Execution Summary
+- Created a script to create the algorithm record for the Swarm Community feed generator
+- Successfully created the record with the following details:
+  - Display Name: "Swarm Community"
+  - Description: "A feed of posts from Swarm community members"
+  - DID: did:plc:ouadmsyvsfcpkxg3yyz4trqi
+- Obtained the record URI: at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.generator/swarm-community
+- Updated the local DID info file with the record URI
+- The feed generator is now properly registered and discoverable in the AT Protocol ecosystem
+
+**Done**
 
 ---
 
@@ -212,3 +233,4 @@ Validate your setup.
     service: 'wss://bsky.social',
     token: 'YOUR_ACCESS_TOKEN',
   });
+```
