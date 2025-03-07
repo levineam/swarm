@@ -1,6 +1,5 @@
 import {Insets, Platform} from 'react-native'
 import {AppBskyActorDefs} from '@atproto/api'
-import { PLATFORM_DID } from '../config/did';
 
 export const LOCAL_DEV_SERVICE =
   Platform.OS === 'android' ? 'http://10.0.2.2:2583' : 'http://localhost:2583'
@@ -130,8 +129,9 @@ export const DISCOVER_FEED_URI =
 export const VIDEO_FEED_URI =
   'at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/thevids'
 export const STAGING_VIDEO_FEED_URI =
-  'at://did:plc:yofh3kx63drvfljkibw5zuxo/app.bsky.feed.generator/thevids'
-export const SWARM_FEED_URI = 'at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/swarm-community';
+  'at://did:plc:q6gjnaw2blty4crticxkmujt/app.bsky.feed.generator/bsky-video-staging'
+export const SWARM_FEED_URI =
+  'at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.generator/swarm-community'
 export const VIDEO_FEED_URIS = [VIDEO_FEED_URI, STAGING_VIDEO_FEED_URI]
 export const DISCOVER_SAVED_FEED = {
   type: 'feed',
