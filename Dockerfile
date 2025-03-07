@@ -67,14 +67,24 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install --yes \
   dumb-init \
-  ca-certificates
+  ca-certificates \
+  curl
 
 ENTRYPOINT ["dumb-init", "--"]
 
 WORKDIR /bskyweb
 COPY --from=build-env /bskyweb /usr/bin/bskyweb
+COPY healthcheck.sh /usr/bin/healthcheck.sh
 
-CMD ["/usr/bin/bskyweb"]
+# Create a wrapper script to set HTTP_ADDRESS based on PORT
+RUN echo '#!/bin/bash\n\
+export HTTP_ADDRESS=":${PORT:-10000}"\n\
+echo "Starting server on HTTP_ADDRESS=$HTTP_ADDRESS"\n\
+exec /usr/bin/bskyweb serve\n\
+' > /usr/bin/start.sh && chmod +x /usr/bin/start.sh
+
+# Use the wrapper script as the command
+CMD ["/usr/bin/start.sh"]
 
 LABEL org.opencontainers.image.source=https://github.com/bluesky-social/social-app
 LABEL org.opencontainers.image.description="bsky.app Web App"

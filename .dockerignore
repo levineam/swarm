@@ -1,0 +1,77 @@
+# Node.js
+node_modules
+npm-debug.log
+yarn-error.log
+.yarn-cache
+.npm
+
+# Build artifacts
+build/
+dist/
+web-build/
+*.jsbundle
+*.tsbuildinfo
+.expo/
+coverage/
+junit.xml
+artifacts/
+stats.json
+
+# Development environments
+.idea/
+.vscode/
+.DS_Store
+.env
+.env.*
+!.env.example
+
+# Git related
+.git/
+.github/
+.gitignore
+
+# Testing
+__tests__/
+__mocks__/
+jest/
+.perf/
+
+# Temporary files
+.metro-health-check*
+.eslintcache
+*.log
+
+# Mobile specific
+android/
+ios/
+*.apk
+*.aab
+*.ipa
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# Misc
+.husky/
+docs/
+.cursor/
+.bundle/
+.buckconfig
+.editorconfig
+.prettierrc.js
+.prettierignore
+.ruby-version
+.watchmanconfig
+*.md
+LICENSE
+
+# Keep necessary files for builds
+!bskylink/package.json
+!bskylink/yarn.lock
+!bskyogcard/package.json
+!bskyogcard/yarn.lock
+!bskyembed/package.json
+!bskyembed/yarn.lock 

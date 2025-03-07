@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: swarm-social
+    env: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: PORT
+        value: "10000"
+      - key: ATP_APPVIEW_HOST
+        value: "https://bsky.network"
+      - key: OGCARD_HOST
+        value: "https://card.bsky.app"
+      - key: LINK_HOST
+        value: "https://link.bsky.app"
+      - key: IPCC_HOST
+        value: "https://ipcc.bsky.app"
+      - key: CORS_ALLOWED_ORIGINS
+        value: "https://bsky.app,https://main.bsky.dev,https://app.staging.bsky.dev"
+      - key: STATIC_CDN_HOST
+        value: ""
+      - key: DEBUG
+        value: "false"
+      - key: EXPO_PUBLIC_BUNDLE_IDENTIFIER
+        value: "prod"
+      - key: GOLOG_LOG_LEVEL
+        value: "info"
+    healthCheckPath: /
+    numInstances: 1
+    region: ohio
+    plan: free
+    branch: main
+    autoDeploy: true 
