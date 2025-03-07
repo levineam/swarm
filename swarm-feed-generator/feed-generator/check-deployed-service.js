@@ -1,36 +1,27 @@
 require('dotenv').config()
 
 /**
- * Check Feed Generator Service
+ * Check Deployed Feed Generator Service
  *
- * This script checks if the feed generator service is running correctly
+ * This script checks if the deployed feed generator service is running correctly
  * by making requests to the describeFeedGenerator and getFeedSkeleton endpoints.
  */
-async function checkFeedService() {
+async function checkDeployedService() {
   try {
     // Dynamically import node-fetch
     const fetch = (await import('node-fetch')).default
 
-    const serviceUrl = process.env.FEEDGEN_HOSTNAME || 'localhost:3000'
-    const publisherDid = process.env.FEEDGEN_PUBLISHER_DID
+    // Use the deployed service URL
+    const serviceUrl = 'https://swarm-social.onrender.com'
+    const publisherDid =
+      process.env.FEEDGEN_PUBLISHER_DID || 'did:plc:ouadmsyvsfcpkxg3yyz4trqi'
 
-    if (!publisherDid) {
-      console.error('Error: FEEDGEN_PUBLISHER_DID must be set in .env file')
-      process.exit(1)
-    }
-
-    // Format the URL correctly
-    let baseUrl = serviceUrl
-    if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
-      baseUrl = `http://${baseUrl}`
-    }
-
-    console.log(`Checking feed generator service at ${baseUrl}...`)
+    console.log(`Checking deployed feed generator service at ${serviceUrl}...`)
 
     // Check the describeFeedGenerator endpoint
     console.log('\nTesting describeFeedGenerator endpoint...')
     const describeResponse = await fetch(
-      `${baseUrl}/xrpc/app.bsky.feed.describeFeedGenerator`,
+      `${serviceUrl}/xrpc/app.bsky.feed.describeFeedGenerator`,
     )
 
     if (!describeResponse.ok) {
@@ -62,7 +53,7 @@ async function checkFeedService() {
     // Check the getFeedSkeleton endpoint
     console.log('\nTesting getFeedSkeleton endpoint...')
     const skeletonResponse = await fetch(
-      `${baseUrl}/xrpc/app.bsky.feed.getFeedSkeleton?feed=${encodeURIComponent(
+      `${serviceUrl}/xrpc/app.bsky.feed.getFeedSkeleton?feed=${encodeURIComponent(
         feedUri,
       )}`,
     )
@@ -79,20 +70,20 @@ async function checkFeedService() {
     console.log('getFeedSkeleton response:')
     console.log(JSON.stringify(skeletonData, null, 2))
 
-    console.log('\n✅ Feed generator service is running correctly!')
+    console.log('\n✅ Deployed feed generator service is running correctly!')
 
     return {
       describeFeedGenerator: describeData,
       getFeedSkeleton: skeletonData,
     }
   } catch (error) {
-    console.error('Error checking feed service:', error.message)
+    console.error('Error checking deployed service:', error.message)
     throw error
   }
 }
 
 // Execute the function
-checkFeedService()
+checkDeployedService()
   .then((result) => {
     console.log('\nProcess completed successfully.')
 

@@ -1,9 +1,9 @@
 import {
-  OutputSchema as RepoEvent,
   isCommit,
+  OutputSchema as RepoEvent,
 } from './lexicon/types/com/atproto/sync/subscribeRepos'
-import { FirehoseSubscriptionBase, getOpsByType } from './util/subscription'
 import { isSwarmCommunityMember } from './swarm-community-members'
+import { FirehoseSubscriptionBase, getOpsByType } from './util/subscription'
 
 export class FirehoseSubscription extends FirehoseSubscriptionBase {
   async handleEvent(evt: RepoEvent) {
@@ -19,7 +19,7 @@ export class FirehoseSubscription extends FirehoseSubscriptionBase {
     }
 
     const postsToDelete = ops.posts.deletes.map((del) => del.uri)
-    
+
     // Filter posts for the "whats-alf" feed (original example)
     const alfPostsToCreate = ops.posts.creates
       .filter((create) => {
@@ -31,10 +31,11 @@ export class FirehoseSubscription extends FirehoseSubscriptionBase {
         return {
           uri: create.uri,
           cid: create.cid,
+          creator: create.author,
           indexedAt: new Date().toISOString(),
         }
       })
-    
+
     // Filter posts for the Swarm community feed
     const swarmPostsToCreate = ops.posts.creates
       .filter((create) => {
@@ -46,10 +47,11 @@ export class FirehoseSubscription extends FirehoseSubscriptionBase {
         return {
           uri: create.uri,
           cid: create.cid,
+          creator: create.author,
           indexedAt: new Date().toISOString(),
         }
       })
-    
+
     // Combine posts from both feeds
     const postsToCreate = [...alfPostsToCreate, ...swarmPostsToCreate]
 

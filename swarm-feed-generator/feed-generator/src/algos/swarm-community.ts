@@ -1,6 +1,6 @@
-import { QueryParams } from '../lexicon/types/app/bsky/feed/getFeedSkeleton'
 import { AppContext } from '../config'
-import { SWARM_COMMUNITY_MEMBERS, isSwarmCommunityMember } from '../swarm-community-members'
+import { QueryParams } from '../lexicon/types/app/bsky/feed/getFeedSkeleton'
+import { SWARM_COMMUNITY_MEMBERS } from '../swarm-community-members'
 
 // max 15 chars
 export const shortname = 'swarm-community'
@@ -10,9 +10,15 @@ export const handler = async (ctx: AppContext, params: QueryParams) => {
   const db = ctx.db
 
   // Use SWARM_COMMUNITY_MEMBERS to filter posts from community members
-  const memberDids = SWARM_COMMUNITY_MEMBERS.length > 0 
-    ? SWARM_COMMUNITY_MEMBERS 
-    : await db.selectFrom('post').select('creator').distinct().execute().then(rows => rows.map(row => row.creator))
+  const memberDids =
+    SWARM_COMMUNITY_MEMBERS.length > 0
+      ? SWARM_COMMUNITY_MEMBERS
+      : await db
+          .selectFrom('post')
+          .select(['creator'])
+          .distinct()
+          .execute()
+          .then((rows) => rows.map((row) => row.creator))
 
   let builder = db
     .selectFrom('post')
@@ -27,17 +33,18 @@ export const handler = async (ctx: AppContext, params: QueryParams) => {
     if (!indexedAt || !cid) {
       throw new Error('Invalid cursor')
     }
-    builder = builder
-      .where(eb =>
-        eb
-          .where('indexedAt', '<', indexedAt)
-          .orWhere(eb => eb.where('indexedAt', '=', indexedAt).where('cid', '<', cid))
-      )
+
+    builder = builder.where((eb) => {
+      return eb.or([
+        eb('indexedAt', '<', indexedAt),
+        eb.and([eb('indexedAt', '=', indexedAt), eb('cid', '<', cid)]),
+      ])
+    })
   }
 
   const res = await builder.execute()
 
-  const feed = res.map(row => ({
+  const feed = res.map((row) => ({
     post: row.uri,
   }))
 
@@ -51,4 +58,4 @@ export const handler = async (ctx: AppContext, params: QueryParams) => {
     cursor: nextCursor,
     feed,
   }
-} 
+}
