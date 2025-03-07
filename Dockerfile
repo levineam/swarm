@@ -42,7 +42,18 @@ RUN \. "$NVM_DIR/nvm.sh" && \
   EXPO_PUBLIC_BUNDLE_IDENTIFIER=$EXPO_PUBLIC_BUNDLE_IDENTIFIER EXPO_PUBLIC_BUNDLE_DATE=$() yarn build-web
 
 # DEBUG
-RUN find ./bskyweb/static && find ./web-build/static
+RUN echo "Listing static files:" && \
+  find ./bskyweb/static && \
+  echo "Listing web-build files:" && \
+  find ./web-build/static
+
+# Copy web-build static files to bskyweb/static
+RUN mkdir -p ./bskyweb/static/js && \
+    mkdir -p ./bskyweb/static/css && \
+    mkdir -p ./bskyweb/static/media && \
+    cp -r ./web-build/static/js/* ./bskyweb/static/js/ && \
+    cp -r ./web-build/static/css/* ./bskyweb/static/css/ && \
+    cp -r ./web-build/static/media/* ./bskyweb/static/media/ || true
 
 #
 # Generate the bskyweb Go binary.
@@ -68,18 +79,29 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install --yes \
   dumb-init \
   ca-certificates \
-  curl
+  curl \
+  procps \
+  net-tools
 
 ENTRYPOINT ["dumb-init", "--"]
 
 WORKDIR /bskyweb
 COPY --from=build-env /bskyweb /usr/bin/bskyweb
+COPY --from=build-env /usr/src/social-app/bskyweb/static /bskyweb/static
+COPY --from=build-env /usr/src/social-app/bskyweb/templates /bskyweb/templates
 COPY healthcheck.sh /usr/bin/healthcheck.sh
 
 # Create a wrapper script to set HTTP_ADDRESS based on PORT
 RUN echo '#!/bin/bash\n\
 export HTTP_ADDRESS=":${PORT:-10000}"\n\
 echo "Starting server on HTTP_ADDRESS=$HTTP_ADDRESS"\n\
+echo "Listing contents of /bskyweb:"\n\
+ls -la /bskyweb\n\
+echo "Listing contents of /bskyweb/static:"\n\
+ls -la /bskyweb/static || echo "Static directory not found"\n\
+echo "Listing contents of /bskyweb/templates:"\n\
+ls -la /bskyweb/templates || echo "Templates directory not found"\n\
+echo "Starting bskyweb server..."\n\
 exec /usr/bin/bskyweb serve\n\
 ' > /usr/bin/start.sh && chmod +x /usr/bin/start.sh
 

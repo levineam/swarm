@@ -19,12 +19,13 @@ services:
       - key: STATIC_CDN_HOST
         value: ""
       - key: DEBUG
-        value: "false"
+        value: "true"
       - key: EXPO_PUBLIC_BUNDLE_IDENTIFIER
         value: "prod"
       - key: GOLOG_LOG_LEVEL
-        value: "info"
+        value: "debug"
     healthCheckPath: /
+    healthCheckTimeout: 300
     numInstances: 1
     region: ohio
     plan: free
