@@ -1,0 +1,27 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/did/v1",
+    "https://w3id.org/security/suites/secp256k1-2019/v1"
+  ],
+  "id": "did:web:swarm-social.onrender.com",
+  "verificationMethod": [
+    {
+      "id": "did:web:swarm-social.onrender.com#atproto",
+      "type": "EcdsaSecp256k1VerificationKey2019",
+      "controller": "did:web:swarm-social.onrender.com",
+      "publicKeyMultibase": "zQ3shpSCR3uBJN5PNa5p8kr7Nfq2qsMUEppyayavmXLyCKP5r"
+    }
+  ],
+  "service": [
+    {
+      "id": "#atproto_pds",
+      "type": "AtprotoPersonalDataServer",
+      "serviceEndpoint": "https://bsky.social"
+    },
+    {
+      "id": "#atproto_feed_generator",
+      "type": "AtprotoFeedGenerator",
+      "serviceEndpoint": "https://swarm-social.onrender.com"
+    }
+  ]
+}
