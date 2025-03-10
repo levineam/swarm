@@ -272,11 +272,11 @@ let DrawerContent = ({}: React.PropsWithoutRef<{}>): React.ReactNode => {
               onPress={onPressNotifications}
             />
             <FeedsMenuItem isActive={isAtFeeds} onPress={onPressMyFeeds} />
-            <WalletMenuItem isActive={false} onPress={onPressWallet} />
             <ProfileMenuItem
               isActive={isAtMyProfile}
               onPress={onPressProfile}
             />
+            <WalletMenuItem isActive={false} onPress={onPressWallet} />
             <SettingsMenuItem onPress={onPressSettings} />
           </>
         ) : (
