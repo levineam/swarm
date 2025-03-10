@@ -140,7 +140,7 @@ let DrawerContent = ({}: React.PropsWithoutRef<{}>): React.ReactNode => {
   const {hasSession, currentAccount} = useSession()
 
   console.log(
-    'DrawerContent - hasSession:',
+    'DrawerContent rendering - hasSession:',
     hasSession,
     'currentAccount:',
     currentAccount ? currentAccount.handle : 'none',
@@ -261,6 +261,9 @@ let DrawerContent = ({}: React.PropsWithoutRef<{}>): React.ReactNode => {
 
         {hasSession ? (
           <>
+            <View style={{padding: 5, backgroundColor: 'rgba(0, 255, 0, 0.1)'}}>
+              <Text>Menu items (hasSession: {String(hasSession)})</Text>
+            </View>
             <SearchMenuItem isActive={isAtSearch} onPress={onPressSearch} />
             <HomeMenuItem isActive={isAtHome} onPress={onPressHome} />
             <ChatMenuItem isActive={isAtMessages} onPress={onPressMessages} />
@@ -278,6 +281,9 @@ let DrawerContent = ({}: React.PropsWithoutRef<{}>): React.ReactNode => {
           </>
         ) : (
           <>
+            <View style={{padding: 5, backgroundColor: 'rgba(255, 0, 0, 0.1)'}}>
+              <Text>Menu items (hasSession: {String(hasSession)})</Text>
+            </View>
             <HomeMenuItem isActive={isAtHome} onPress={onPressHome} />
             <FeedsMenuItem isActive={isAtFeeds} onPress={onPressMyFeeds} />
             <SearchMenuItem isActive={isAtSearch} onPress={onPressSearch} />
@@ -503,39 +509,35 @@ let FeedsMenuItem = ({
 FeedsMenuItem = React.memo(FeedsMenuItem)
 
 let WalletMenuItem = ({
-  isActive: _isActive,
-  onPress: _onPress,
+  isActive,
+  onPress,
 }: {
   isActive: boolean
   onPress: () => void
 }): React.ReactNode => {
-  // Unused variables are prefixed with underscore to satisfy linting
+  const {_} = useLingui()
+  const t = useTheme()
+  
+  console.log('Rendering WalletMenuItem')
   
   React.useEffect(() => {
     console.log('WalletMenuItem mounted')
   }, [])
-
-  // Create a direct button instead of using MenuItem
+  
   return (
-    <Button
-      testID="wallet-menu-item-button"
-      onPress={_onPress}
-      accessibilityRole="tab"
-      label="Wallet">
-      {({hovered, pressed}) => (
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            padding: 10,
-            backgroundColor: 'rgba(255, 0, 0, 0.1)',
-            margin: 5,
-            borderRadius: 5,
-          }}>
-          <Text style={{color: 'black', fontWeight: 'bold'}}>WALLET</Text>
-        </View>
-      )}
-    </Button>
+    <MenuItem
+      testID="wallet-menu-item"
+      icon={
+        isActive ? (
+          <WalletFilled style={[t.atoms.text]} width={iconWidth} />
+        ) : (
+          <Wallet style={[t.atoms.text]} width={iconWidth} />
+        )
+      }
+      label={_(msg`Wallet`)}
+      bold={isActive}
+      onPress={onPress}
+    />
   )
 }
 WalletMenuItem = React.memo(WalletMenuItem)
