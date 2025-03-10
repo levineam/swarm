@@ -1,16 +1,9 @@
 import React from 'react'
-import {useCallback, useEffect, useMemo, useState} from 'react'
-import {Text, View} from 'react-native'
+import {useEffect} from 'react'
+import {View} from 'react-native'
 import {msg} from '@lingui/macro'
 import {useLingui} from '@lingui/react'
 
-import {
-  hasWallet,
-  linkBlueskyToKoinos,
-  LinkedWalletInfo,
-  loadWalletAddress,
-  saveWalletInfo,
-} from '#/lib/koinos'
 import {useKawaiiMode} from '#/state/preferences/kawaii'
 import {useSession} from '#/state/session'
 import {useShellLayout} from '#/state/shell/shell-layout'
@@ -21,9 +14,6 @@ import {ButtonIcon} from '#/components/Button'
 import {Hashtag_Stroke2_Corner0_Rounded as FeedsIcon} from '#/components/icons/Hashtag'
 import * as Layout from '#/components/Layout'
 import {Link} from '#/components/Link'
-import {KoinosWalletDisplayNew} from '../util/KoinosWalletDisplayNew'
-import {KoinosWalletImport} from '../util/KoinosWalletImport'
-// import {KoinosWalletSection} from '../util/KoinosWalletSection'
 
 export function HomeHeaderLayout(props: {
   children: React.ReactNode
@@ -46,78 +36,10 @@ function HomeHeaderLayoutDesktopAndTablet({
 }) {
   const t = useTheme()
   const {headerHeight} = useShellLayout()
-  const {hasSession, currentAccount} = useSession()
+  const {hasSession} = useSession()
   const {_} = useLingui()
   const kawaii = useKawaiiMode()
   const gutters = useGutters([0, 'base'])
-
-  // Add wallet state
-  const [walletInfo, setWalletInfo] = useState<LinkedWalletInfo | null>(null)
-  const [_isCheckingWallet, setIsCheckingWallet] = useState(true)
-  const [showImportUI, setShowImportUI] = useState(false)
-
-  // Get user info - adapt this to how user data is accessed in the web version
-  const currentUser = useMemo(
-    () => (currentAccount ? {handle: currentAccount.handle} : null),
-    [currentAccount],
-  )
-
-  // Check for existing wallet
-  useEffect(() => {
-    const checkWallet = async () => {
-      if (!currentUser?.handle) {
-        setIsCheckingWallet(false)
-        return
-      }
-
-      setIsCheckingWallet(true)
-      try {
-        const hasExistingWallet = await hasWallet(currentUser.handle)
-
-        if (hasExistingWallet) {
-          const address = await loadWalletAddress(currentUser.handle)
-          if (address) {
-            setWalletInfo({
-              blueskyUsername: currentUser.handle,
-              koinosAddress: address,
-              privateKeyWif: '(Private key not stored for security)',
-            })
-          }
-        }
-      } catch (error) {
-        console.error('Error checking wallet:', error)
-      } finally {
-        setIsCheckingWallet(false)
-      }
-    }
-
-    checkWallet()
-  }, [currentUser])
-
-  // Initialize wallet function
-  const initializeKoinosWallet = useCallback(async (username: string) => {
-    if (!username) return
-
-    const info = linkBlueskyToKoinos(username)
-    setWalletInfo(info)
-
-    await saveWalletInfo(info)
-  }, [])
-
-  // Handle import success
-  const handleImportSuccess = useCallback(
-    (address: string) => {
-      if (!currentUser?.handle) return
-
-      setWalletInfo({
-        blueskyUsername: currentUser.handle,
-        koinosAddress: address,
-        privateKeyWif: '(Private key not stored for security)',
-      })
-      setShowImportUI(false)
-    },
-    [currentUser],
-  )
 
   // Add this style block to the head of the document
   useEffect(() => {
@@ -181,12 +103,7 @@ function HomeHeaderLayoutDesktopAndTablet({
 
       <div style={{position: 'relative'}}>
         <div
-          className="koinos-wallet-container"
           style={{
-            position: 'fixed',
-            top: '380px',
-            right: '70px',
-            zIndex: 10,
             display: 'flex',
             flexDirection: 'column',
             gap: '10px',
@@ -199,64 +116,7 @@ function HomeHeaderLayoutDesktopAndTablet({
             borderRadius: '8px',
             boxShadow: 'none',
           }}>
-          {walletInfo && <KoinosWalletDisplayNew walletInfo={walletInfo} />}
-
-          {showImportUI && currentUser?.handle && (
-            <KoinosWalletImport
-              blueskyUsername={currentUser.handle}
-              onImportSuccess={handleImportSuccess}
-              onCancel={() => setShowImportUI(false)}
-            />
-          )}
-
-          {!walletInfo && !showImportUI && currentUser?.handle && (
-            <div
-              className="walletActions"
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '10px',
-              }}>
-              <h3
-                style={{
-                  margin: '0 0 10px 0',
-                  color: 'white',
-                  fontSize: '16px',
-                }}>
-                <Text style={{color: 'white'}}>Koinos Wallet</Text>
-              </h3>
-
-              <button
-                className="initWalletButton"
-                onClick={() => initializeKoinosWallet(currentUser.handle)}
-                style={{
-                  padding: '10px 15px',
-                  backgroundColor: '#0070ff',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontWeight: 'bold',
-                }}>
-                <Text style={{color: 'white'}}>Create New Wallet</Text>
-              </button>
-
-              <button
-                className="importButton"
-                onClick={() => setShowImportUI(true)}
-                style={{
-                  padding: '10px 15px',
-                  backgroundColor: 'transparent',
-                  color: 'white',
-                  border: '1px solid white',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontWeight: 'bold',
-                }}>
-                <Text style={{color: 'white'}}>Import Existing Wallet</Text>
-              </button>
-            </div>
-          )}
+          {/* Remove wallet UI */}
         </div>
       </div>
     </>
