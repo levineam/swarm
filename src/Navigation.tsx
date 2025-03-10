@@ -105,7 +105,8 @@ import {PrivacyAndSecuritySettingsScreen} from './screens/Settings/PrivacyAndSec
 import {SettingsScreen} from './screens/Settings/Settings'
 import {ThreadPreferencesScreen} from './screens/Settings/ThreadPreferences'
 import TopicScreen from './screens/Topic'
-import { SwarmCommunitySettingsScreen } from './view/screens/SwarmCommunitySettings'
+import {WalletScreen} from './screens/Wallet'
+import {SwarmCommunitySettingsScreen} from './view/screens/SwarmCommunitySettings'
 
 const navigationRef = createNavigationContainerRef<AllNavigatorParams>()
 
@@ -461,6 +462,11 @@ function commonScreens(Stack: typeof HomeTab, unreadCountLabel?: string) {
       <Stack.Screen
         name="SwarmCommunitySettings"
         component={SwarmCommunitySettingsScreen}
+      />
+      <Stack.Screen
+        name="Wallet"
+        component={WalletScreen}
+        options={{title: title(msg`Wallet`), requireAuth: true}}
       />
     </>
   )
