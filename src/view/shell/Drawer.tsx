@@ -49,6 +49,10 @@ import {
   UserCircle_Filled_Corner0_Rounded as UserCircleFilled,
   UserCircle_Stroke2_Corner0_Rounded as UserCircle,
 } from '#/components/icons/UserCircle'
+import {
+  Wallet_Filled_Corner0_Rounded as WalletFilled,
+  Wallet_Stroke2_Corner0_Rounded as Wallet,
+} from '#/components/icons/Wallet'
 import {InlineLinkText} from '#/components/Link'
 import {Text} from '#/components/Typography'
 
@@ -188,6 +192,11 @@ let DrawerContent = ({}: React.PropsWithoutRef<{}>): React.ReactNode => {
     onPressTab('MyProfile')
   }, [onPressTab])
 
+  const onPressWallet = React.useCallback(() => {
+    navigation.navigate('Wallet')
+    setDrawerOpen(false)
+  }, [navigation, setDrawerOpen])
+
   const onPressMyFeeds = React.useCallback(() => {
     navigation.navigate('Feeds')
     setDrawerOpen(false)
@@ -263,6 +272,7 @@ let DrawerContent = ({}: React.PropsWithoutRef<{}>): React.ReactNode => {
               isActive={isAtMyProfile}
               onPress={onPressProfile}
             />
+            <WalletMenuItem isActive={false} onPress={onPressWallet} />
             <SettingsMenuItem onPress={onPressSettings} />
           </>
         ) : (
@@ -524,11 +534,38 @@ let ProfileMenuItem = ({
         )
       }
       label={_(msg`Profile`)}
+      bold={isActive}
       onPress={onPress}
     />
   )
 }
 ProfileMenuItem = React.memo(ProfileMenuItem)
+
+let WalletMenuItem = ({
+  isActive,
+  onPress,
+}: {
+  isActive: boolean
+  onPress: () => void
+}): React.ReactNode => {
+  const {_} = useLingui()
+  const t = useTheme()
+  return (
+    <MenuItem
+      icon={
+        isActive ? (
+          <WalletFilled style={[t.atoms.text]} width={iconWidth} />
+        ) : (
+          <Wallet style={[t.atoms.text]} width={iconWidth} />
+        )
+      }
+      label={_(msg`Wallet`)}
+      bold={isActive}
+      onPress={onPress}
+    />
+  )
+}
+WalletMenuItem = React.memo(WalletMenuItem)
 
 let SettingsMenuItem = ({onPress}: {onPress: () => void}): React.ReactNode => {
   const {_} = useLingui()
