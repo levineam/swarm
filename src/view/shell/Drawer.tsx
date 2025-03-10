@@ -282,6 +282,7 @@ let DrawerContent = ({}: React.PropsWithoutRef<{}>): React.ReactNode => {
               onPress={onPressProfile}
             />
             <WalletMenuItem isActive={false} onPress={onPressWallet} />
+            <TestMenuItem onPress={() => console.log('Test item pressed')} />
             <SettingsMenuItem onPress={onPressSettings} />
           </>
         ) : (
@@ -566,6 +567,7 @@ let WalletMenuItem = ({
 
   return (
     <MenuItem
+      testID="wallet-menu-item"
       icon={
         isActive ? (
           <WalletFilled style={[t.atoms.text]} width={iconWidth} />
@@ -576,10 +578,27 @@ let WalletMenuItem = ({
       label={_(msg`Wallet`)}
       bold={isActive}
       onPress={onPress}
+      style={{backgroundColor: 'rgba(255, 0, 0, 0.1)'}}
     />
   )
 }
 WalletMenuItem = React.memo(WalletMenuItem)
+
+let TestMenuItem = ({onPress}: {onPress: () => void}): React.ReactNode => {
+  const t = useTheme()
+
+  return (
+    <MenuItem
+      testID="test-menu-item"
+      icon={<HomeFilled style={[t.atoms.text]} width={iconWidth} />}
+      label="Test Item"
+      bold={false}
+      onPress={onPress}
+      style={{backgroundColor: 'rgba(0, 255, 0, 0.1)'}}
+    />
+  )
+}
+TestMenuItem = React.memo(TestMenuItem)
 
 let SettingsMenuItem = ({onPress}: {onPress: () => void}): React.ReactNode => {
   const {_} = useLingui()
