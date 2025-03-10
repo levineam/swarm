@@ -100,25 +100,6 @@ function HomeHeaderLayoutDesktopAndTablet({
         }}>
         {children}
       </Layout.Center>
-
-      <div style={{position: 'relative'}}>
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '10px',
-            maxWidth: '350px',
-            height: 'calc(100vh - 450px)',
-            overflowY: 'auto',
-            padding: '0',
-            paddingBottom: '20px',
-            backgroundColor: 'transparent',
-            borderRadius: '8px',
-            boxShadow: 'none',
-          }}>
-          {/* Remove wallet UI */}
-        </div>
-      </div>
     </>
   )
 }
