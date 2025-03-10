@@ -18,8 +18,16 @@ export function startDidServer() {
   // Create a standalone Express app for serving the DID document
   const app = express()
 
-  // Serve static files from the public directory
-  app.use(express.static(path.join(__dirname, '../public')))
+  // Add request logging middleware
+  app.use((req, res, next) => {
+    console.log('Incoming request:', req.method, req.url)
+    next()
+  })
+
+  // Serve static files from the public directory with dotfiles allowed
+  app.use(
+    express.static(path.join(__dirname, '../public'), { dotfiles: 'allow' }),
+  )
 
   // Direct routes for serving the DID document
   app.get('/.well-known/did.json', (req, res) => {
@@ -41,6 +49,8 @@ export function startDidServer() {
     for (const filePath of possiblePaths) {
       if (fs.existsSync(filePath)) {
         console.log(`Found DID document at ${filePath}`)
+        // Set Cache-Control header to prevent caching by CDN
+        res.set('Cache-Control', 'no-store')
         return res.sendFile(filePath)
       }
     }
@@ -70,12 +80,14 @@ export function startDidServer() {
         },
         {
           id: '#atproto_feed_generator',
-          type: 'AtprotoFeedGenerator',
+          type: 'BskyFeedGenerator',
           serviceEndpoint: `https://${hostname}`,
         },
       ],
     }
 
+    // Set Cache-Control header to prevent caching by CDN
+    res.set('Cache-Control', 'no-store')
     return res.json(didDocument)
   })
 
