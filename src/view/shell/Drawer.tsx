@@ -207,11 +207,6 @@ let DrawerContent = ({}: React.PropsWithoutRef<{}>): React.ReactNode => {
     setDrawerOpen(false)
   }, [navigation, setDrawerOpen])
 
-  const onPressLists = React.useCallback(() => {
-    navigation.navigate('Lists')
-    setDrawerOpen(false)
-  }, [navigation, setDrawerOpen])
-
   const onPressSettings = React.useCallback(() => {
     navigation.navigate('Settings')
     setDrawerOpen(false)
@@ -274,13 +269,11 @@ let DrawerContent = ({}: React.PropsWithoutRef<{}>): React.ReactNode => {
               onPress={onPressNotifications}
             />
             <FeedsMenuItem isActive={isAtFeeds} onPress={onPressMyFeeds} />
-            <ListsMenuItem onPress={onPressLists} />
+            <WalletMenuItem isActive={false} onPress={onPressWallet} />
             <ProfileMenuItem
               isActive={isAtMyProfile}
               onPress={onPressProfile}
             />
-            <WalletMenuItem isActive={false} onPress={onPressWallet} />
-            <TestMenuItem onPress={() => console.log('Test item pressed')} />
             <SettingsMenuItem onPress={onPressSettings} />
           </>
         ) : (
@@ -509,46 +502,6 @@ let FeedsMenuItem = ({
 }
 FeedsMenuItem = React.memo(FeedsMenuItem)
 
-let ListsMenuItem = ({onPress}: {onPress: () => void}): React.ReactNode => {
-  const {_} = useLingui()
-  const t = useTheme()
-
-  return (
-    <MenuItem
-      icon={<List style={[t.atoms.text]} width={iconWidth} />}
-      label={_(msg`Lists`)}
-      onPress={onPress}
-    />
-  )
-}
-ListsMenuItem = React.memo(ListsMenuItem)
-
-let ProfileMenuItem = ({
-  isActive,
-  onPress,
-}: {
-  isActive: boolean
-  onPress: () => void
-}): React.ReactNode => {
-  const {_} = useLingui()
-  const t = useTheme()
-  return (
-    <MenuItem
-      icon={
-        isActive ? (
-          <UserCircleFilled style={[t.atoms.text]} width={iconWidth} />
-        ) : (
-          <UserCircle style={[t.atoms.text]} width={iconWidth} />
-        )
-      }
-      label={_(msg`Profile`)}
-      bold={isActive}
-      onPress={onPress}
-    />
-  )
-}
-ProfileMenuItem = React.memo(ProfileMenuItem)
-
 let WalletMenuItem = ({
   isActive: _isActive,
   onPress: _onPress,
@@ -587,21 +540,31 @@ let WalletMenuItem = ({
 }
 WalletMenuItem = React.memo(WalletMenuItem)
 
-let TestMenuItem = ({onPress}: {onPress: () => void}): React.ReactNode => {
+let ProfileMenuItem = ({
+  isActive,
+  onPress,
+}: {
+  isActive: boolean
+  onPress: () => void
+}): React.ReactNode => {
+  const {_} = useLingui()
   const t = useTheme()
-
   return (
     <MenuItem
-      testID="test-menu-item"
-      icon={<HomeFilled style={[t.atoms.text]} width={iconWidth} />}
-      label="Test Item"
-      bold={false}
+      icon={
+        isActive ? (
+          <UserCircleFilled style={[t.atoms.text]} width={iconWidth} />
+        ) : (
+          <UserCircle style={[t.atoms.text]} width={iconWidth} />
+        )
+      }
+      label={_(msg`Profile`)}
+      bold={isActive}
       onPress={onPress}
-      style={{backgroundColor: 'rgba(0, 255, 0, 0.1)'}}
     />
   )
 }
-TestMenuItem = React.memo(TestMenuItem)
+ProfileMenuItem = React.memo(ProfileMenuItem)
 
 let SettingsMenuItem = ({onPress}: {onPress: () => void}): React.ReactNode => {
   const {_} = useLingui()
