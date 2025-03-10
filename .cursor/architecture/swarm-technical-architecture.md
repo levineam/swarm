@@ -40,6 +40,9 @@ We've established the foundational infrastructure and are now ready to expand in
 - **Client Integration**: Updated client application to use the new feed URI
 - **Testing Framework**: Created comprehensive testing documentation and procedures
 
+### Implementation Challenges and Solutions
+For detailed notes on implementation challenges, solutions, and lessons learned during the feed generator development, refer to [Feed Generator Implementation Notes](./feed-generator-implementation-notes.md). This document captures the technical details and troubleshooting steps that were necessary to successfully deploy the feed generator in production.
+
 ## 3. Architecture Overview
 
 ### Core Components
@@ -56,6 +59,7 @@ We've established the foundational infrastructure and are now ready to expand in
 - **Integration Points**: AT Protocol firehose, Bluesky API, client application
 - **Deployment**: Hosted on Render at https://swarm-social.onrender.com
 - **Feed URI**: at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.generator/swarm-community
+- **Technical Implementation**: See [Feed Generator Implementation Notes](./feed-generator-implementation-notes.md) for detailed implementation information, including DID document configuration, build process, and deployment considerations.
 
 #### Database
 - **Current**: SQLite for development
@@ -147,6 +151,7 @@ By maintaining a single feed generator service with support for multiple algorit
 - **AT Protocol Evolution**: The protocol has evolved to handle DID document updates automatically when creating algorithm records
 - **Feed Generation Performance**: Current implementation works well for small to medium communities, but will need optimization for larger scale
 - **Token Management**: Access tokens require regular renewal; a token refresh mechanism will be needed for production
+- **DID and Identity Configuration**: Working with DIDs and the AT Protocol required careful attention to detail and multiple iterations to get right. See [Feed Generator Implementation Notes](./feed-generator-implementation-notes.md) for detailed lessons learned.
 
 ### Implementation Approach
 - **Modular Design**: The separation of feed generator logic from client application provides flexibility
