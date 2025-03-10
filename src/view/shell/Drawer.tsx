@@ -25,27 +25,28 @@ import {NavSignupCard} from '#/view/shell/NavSignupCard'
 import {atoms as a, tokens, useTheme, web} from '#/alf'
 import {Button, ButtonIcon, ButtonText} from '#/components/Button'
 import {Divider} from '#/components/Divider'
+import {Bell_Filled_Corner0_Rounded as BellFilled} from '#/components/icons/Bell'
+import {Bell_Stroke2_Corner0_Rounded as Bell} from '#/components/icons/Bell'
+import {BulletList_Stroke2_Corner0_Rounded as List} from '#/components/icons/BulletList'
 import {
-  Home_Filled_Corner0_Rounded as HomeFilled,
-  Home_Stroke2_Corner0_Rounded as Home,
-  Search_Filled_Corner0_Rounded as SearchFilled,
-  Search_Stroke2_Corner0_Rounded as Search,
-  Bell_Filled_Corner0_Rounded as BellFilled,
-  Bell_Stroke2_Corner0_Rounded as Bell,
-  Chat_Filled_Corner0_Rounded as ChatFilled,
-  Chat_Stroke2_Corner0_Rounded as Chat,
-  Bookmark_Filled_Corner0_Rounded as BookmarkFilled,
-  Bookmark_Stroke2_Corner0_Rounded as Bookmark,
-  List_Filled_Corner0_Rounded as ListFilled,
-  List_Stroke2_Corner0_Rounded as List,
-  Person_Filled_Corner0_Rounded as PersonFilled,
-  Person_Stroke2_Corner0_Rounded as Person,
-  Settings_Stroke2_Corner0_Rounded as Settings,
-  Invite_Stroke2_Corner0_Rounded as Invite,
-  Moderation_Stroke2_Corner0_Rounded as Moderation,
-  Logout_Stroke2_Corner0_Rounded as Logout,
-  Ellipsis_Horizontal_Stroke2_Corner0_Rounded as EllipsisHorizontal,
-} from '#/components/icons'
+  Hashtag_Filled_Corner0_Rounded as HashtagFilled,
+  Hashtag_Stroke2_Corner0_Rounded as Hashtag,
+} from '#/components/icons/Hashtag'
+import {
+  HomeOpen_Filled_Corner0_Rounded as HomeFilled,
+  HomeOpen_Stoke2_Corner0_Rounded as Home,
+} from '#/components/icons/HomeOpen'
+import {MagnifyingGlass_Filled_Stroke2_Corner0_Rounded as MagnifyingGlassFilled} from '#/components/icons/MagnifyingGlass'
+import {MagnifyingGlass2_Stroke2_Corner0_Rounded as MagnifyingGlass} from '#/components/icons/MagnifyingGlass2'
+import {
+  Message_Stroke2_Corner0_Rounded as Message,
+  Message_Stroke2_Corner0_Rounded_Filled as MessageFilled,
+} from '#/components/icons/Message'
+import {SettingsGear2_Stroke2_Corner0_Rounded as Settings} from '#/components/icons/SettingsGear2'
+import {
+  UserCircle_Filled_Corner0_Rounded as UserCircleFilled,
+  UserCircle_Stroke2_Corner0_Rounded as UserCircle,
+} from '#/components/icons/UserCircle'
 import {
   Wallet_Filled_Corner0_Rounded as WalletFilled,
   Wallet_Stroke2_Corner0_Rounded as Wallet,
@@ -336,7 +337,7 @@ let DrawerFooter = ({
         variant="solid"
         color="secondary"
         onPress={onPressFeedback}>
-        <ButtonIcon icon={ChatFilled} position="left" />
+        <ButtonIcon icon={MessageFilled} position="left" />
         <ButtonText>
           <Trans>Feedback</Trans>
         </ButtonText>
@@ -379,9 +380,9 @@ let SearchMenuItem = ({
     <MenuItem
       icon={
         isActive ? (
-          <SearchFilled style={[t.atoms.text]} width={iconWidth} />
+          <MagnifyingGlassFilled style={[t.atoms.text]} width={iconWidth} />
         ) : (
-          <Search style={[t.atoms.text]} width={iconWidth} />
+          <MagnifyingGlass style={[t.atoms.text]} width={iconWidth} />
         )
       }
       label={_(msg`Search`)}
@@ -431,9 +432,9 @@ let ChatMenuItem = ({
     <MenuItem
       icon={
         isActive ? (
-          <ChatFilled style={[t.atoms.text]} width={iconWidth} />
+          <MessageFilled style={[t.atoms.text]} width={iconWidth} />
         ) : (
-          <Chat style={[t.atoms.text]} width={iconWidth} />
+          <Message style={[t.atoms.text]} width={iconWidth} />
         )
       }
       label={_(msg`Chat`)}
@@ -495,12 +496,12 @@ let FeedsMenuItem = ({
     <MenuItem
       icon={
         isActive ? (
-          <BookmarkFilled width={iconWidth} style={[t.atoms.text]} />
+          <HashtagFilled width={iconWidth} style={[t.atoms.text]} />
         ) : (
-          <Bookmark width={iconWidth} style={[t.atoms.text]} />
+          <Hashtag width={iconWidth} style={[t.atoms.text]} />
         )
       }
-      label={_(msg`Feeds`)}
+      label={_(msg`My Feeds`)}
       bold={isActive}
       onPress={onPress}
     />
@@ -514,7 +515,7 @@ let ListsMenuItem = ({onPress}: {onPress: () => void}): React.ReactNode => {
 
   return (
     <MenuItem
-      icon={<ListFilled style={[t.atoms.text]} width={iconWidth} />}
+      icon={<List style={[t.atoms.text]} width={iconWidth} />}
       label={_(msg`Lists`)}
       onPress={onPress}
     />
@@ -535,9 +536,9 @@ let ProfileMenuItem = ({
     <MenuItem
       icon={
         isActive ? (
-          <PersonFilled style={[t.atoms.text]} width={iconWidth} />
+          <UserCircleFilled style={[t.atoms.text]} width={iconWidth} />
         ) : (
-          <Person style={[t.atoms.text]} width={iconWidth} />
+          <UserCircle style={[t.atoms.text]} width={iconWidth} />
         )
       }
       label={_(msg`Profile`)}
