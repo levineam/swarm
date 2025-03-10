@@ -141,6 +141,13 @@ let DrawerContent = ({}: React.PropsWithoutRef<{}>): React.ReactNode => {
   } = useNavigationTabState()
   const {hasSession, currentAccount} = useSession()
 
+  console.log(
+    'DrawerContent - hasSession:',
+    hasSession,
+    'currentAccount:',
+    currentAccount ? currentAccount.handle : 'none',
+  )
+
   // events
   // =
 
@@ -227,6 +234,8 @@ let DrawerContent = ({}: React.PropsWithoutRef<{}>): React.ReactNode => {
 
   // rendering
   // =
+
+  console.log('Rendering DrawerContent, hasSession:', hasSession)
 
   return (
     <View
@@ -550,6 +559,11 @@ let WalletMenuItem = ({
 }): React.ReactNode => {
   const {_} = useLingui()
   const t = useTheme()
+
+  React.useEffect(() => {
+    console.log('WalletMenuItem mounted')
+  }, [])
+
   return (
     <MenuItem
       icon={
@@ -582,6 +596,7 @@ SettingsMenuItem = React.memo(SettingsMenuItem)
 
 function MenuItem({icon, label, count, bold, onPress}: MenuItemProps) {
   const t = useTheme()
+  console.log('Rendering MenuItem:', label)
   return (
     <Button
       testID={`menuItemButton-${label}`}
