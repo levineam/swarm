@@ -16,6 +16,8 @@ One of the most persistent challenges was correctly configuring and serving the 
 2. **Static File Serving**: There was no middleware configured to serve static files from the public directory.
 3. **Build Process Issues**: The DID document wasn't being properly copied to the correct location during the build process.
 4. **DID/Hostname Mismatch**: Inconsistencies between the `FEEDGEN_SERVICE_DID` and `FEEDGEN_HOSTNAME` values in the environment variables.
+5. **Port Configuration**: The application wasn't properly using the PORT environment variable provided by Render.com, causing mismatches in service endpoints.
+6. **Server Architecture**: The main application server wasn't properly configured to handle the DID document routes.
 
 #### Solution
 We implemented a comprehensive solution with multiple layers of redundancy:
@@ -40,6 +42,24 @@ We implemented a comprehensive solution with multiple layers of redundancy:
    - Set `FEEDGEN_PUBLISHER_DID=did:plc:ouadmsyvsfcpkxg3yyz4trqi` (PLC DID)
    - Set `FEEDGEN_SERVICE_DID=did:web:swarm-social.onrender.com` (Web DID)
    - Set `FEEDGEN_HOSTNAME=swarm-social.onrender.com`
+
+5. **Direct Static File Approach**:
+   - Created a static `did.json` file in the public directory that gets served directly
+   - This provides a reliable fallback when other methods fail
+   - The static file contains all necessary DID document components including verification methods and service endpoints
+
+6. **Port Configuration Fix**:
+   - Updated the server to properly use the PORT environment variable provided by Render.com
+   - Added fallback logic to ensure a default port is used if not specified
+   - Ensured consistent port usage across all service endpoint references
+
+7. **Dedicated DID Server**:
+   - Created a separate Express server specifically for serving the DID document
+   - Implemented in a dedicated module (`did-server.ts`) to keep concerns separated
+   - Added comprehensive error handling and debugging endpoints
+   - Configured to check multiple possible file paths for the DID document
+   - Implemented dynamic DID document generation as a fallback
+   - Added a `/debug` endpoint to help diagnose issues in production
 
 ### 2. Feed Algorithm URI Registration
 
@@ -126,6 +146,10 @@ The build and deployment process needed special handling for static files and en
 
 3. Included the `.well-known` and `public` directories in the git repository to ensure they were deployed
 
+4. Added a static `did.json` file directly in the public directory as a reliable fallback
+
+5. Ensured proper handling of the PORT environment variable provided by Render.com
+
 ## Lessons Learned
 
 1. **DID Document Complexity**: Working with DIDs and the AT Protocol requires careful attention to detail in the DID document structure and deployment configuration.
@@ -139,6 +163,14 @@ The build and deployment process needed special handling for static files and en
 5. **Environment Variable Management**: Clear separation of environment variables for different environments (development vs. production) helps prevent confusion and deployment issues.
 
 6. **Logging and Debugging**: Detailed logging is invaluable for diagnosing issues in production environments where direct debugging is not possible.
+
+7. **Multiple Redundancy Layers**: Implementing multiple approaches to solve critical issues (like serving the DID document) provides resilience against unexpected deployment problems.
+
+8. **Port Configuration**: Always use the PORT environment variable provided by the hosting platform rather than hardcoding port values, as this can cause service endpoint mismatches.
+
+9. **Separation of Concerns**: Creating dedicated servers for specific functionality (like serving the DID document) can simplify debugging and maintenance.
+
+10. **Diagnostic Endpoints**: Adding diagnostic endpoints (like `/debug`) in production can provide valuable information for troubleshooting without requiring server restarts or log access.
 
 ## Reference Information
 
@@ -170,13 +202,18 @@ DATABASE_URL=sqlite:swarm-feed.db
 
 - Feed Generator Endpoint: `https://swarm-social.onrender.com`
 - DID Document URL: `https://swarm-social.onrender.com/.well-known/did.json`
+- Alternative DID Document URL: `https://swarm-social.onrender.com/did.json`
 - Feed URI: `at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.generator/swarm-community`
 
 ### Key Files
 
 - `src/server.ts`: Contains Express server setup and static file middleware
+- `src/did-server.ts`: Dedicated server for serving the DID document with robust error handling
+- `src/index.ts`: Main entry point that starts both the feed generator and DID server
 - `src/well-known.ts`: Handles serving the DID document
 - `scripts/copy-did-document.js`: Post-build script for copying the DID document
+- `scripts/deploy-did-document.js`: Script to deploy the DID document to the public directory
 - `package.json`: Contains build scripts including the post-build hook
 - `.well-known/did.json`: Source DID document
-- `public/.well-known/did.json`: Public DID document that gets served 
+- `public/.well-known/did.json`: Public DID document that gets served
+- `public/did.json`: Static fallback DID document 
