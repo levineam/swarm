@@ -1,13 +1,15 @@
-import http from 'http'
+import { DidResolver, MemoryCache } from '@atproto/identity'
 import events from 'events'
 import express from 'express'
-import { DidResolver, MemoryCache } from '@atproto/identity'
-import { createServer } from './lexicon'
-import feedGeneration from './methods/feed-generation'
-import describeGenerator from './methods/describe-generator'
-import { createDb, Database, migrateToLatest } from './db'
-import { FirehoseSubscription } from './subscription'
+import http from 'http'
+import path from 'path'
+
 import { AppContext, Config } from './config'
+import { createDb, Database, migrateToLatest } from './db'
+import { createServer } from './lexicon'
+import describeGenerator from './methods/describe-generator'
+import feedGeneration from './methods/feed-generation'
+import { FirehoseSubscription } from './subscription'
 import wellKnown from './well-known'
 
 export class FeedGenerator {
@@ -53,6 +55,10 @@ export class FeedGenerator {
       didResolver,
       cfg,
     }
+
+    // Serve static files from the public directory
+    app.use(express.static(path.join(__dirname, '../public')))
+
     feedGeneration(server, ctx)
     describeGenerator(server, ctx)
     app.use(server.xrpc.router)
