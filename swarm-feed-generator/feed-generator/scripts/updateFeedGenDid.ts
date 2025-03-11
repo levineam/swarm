@@ -1,3 +1,4 @@
+// Script to update feed generator DID
 import { AtpAgent } from '@atproto/api'
 import dotenv from 'dotenv'
 import inquirer from 'inquirer'
