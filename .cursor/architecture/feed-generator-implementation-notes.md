@@ -18,14 +18,17 @@ One of the most persistent challenges was correctly configuring and serving the 
 4. **DID/Hostname Mismatch**: Inconsistencies between the `FEEDGEN_SERVICE_DID` and `FEEDGEN_HOSTNAME` values in the environment variables.
 5. **Port Configuration**: The application wasn't properly using the PORT environment variable provided by Render.com, causing mismatches in service endpoints.
 6. **Server Architecture**: The main application server wasn't properly configured to handle the DID document routes.
+7. **Express dotfiles Configuration**: The Express static middleware doesn't serve dotfiles by default, which affects the `.well-known` directory.
+8. **Service Type Definition**: The AT Protocol appears to require a specific service type ("BskyFeedGenerator") that differs from what we were using initially.
+9. **Content-Type Headers**: The DID document needs to be served with the correct Content-Type header.
 
-#### Solution
-We implemented a comprehensive solution with multiple layers of redundancy:
+#### Attempted Solutions
+We've implemented a comprehensive series of solutions with multiple layers of redundancy:
 
 1. **Static File Middleware**:
    ```typescript
    // Added to server.ts
-   app.use(express.static(path.join(__dirname, '../public')));
+   app.use(express.static(path.join(__dirname, '../public'), { dotfiles: 'allow' }));
    ```
 
 2. **Robust DID Document Handler**:
@@ -35,8 +38,9 @@ We implemented a comprehensive solution with multiple layers of redundancy:
 
 3. **Build Process Integration**:
    - Created a post-build script (`copy-did-document.js`) that runs after TypeScript compilation
-   - Added the script to `package.json` with a `postbuild` hook
-   - Ensured the script handles various edge cases, including missing directories
+   - Added a new script (`ensure-did-document.js`) to generate the DID document at build and startup time
+   - Added the scripts to `package.json` with appropriate hooks
+   - Ensured the scripts handle various edge cases, including missing directories
 
 4. **Environment Configuration**:
    - Set `FEEDGEN_PUBLISHER_DID=did:plc:ouadmsyvsfcpkxg3yyz4trqi` (PLC DID)
@@ -60,6 +64,66 @@ We implemented a comprehensive solution with multiple layers of redundancy:
    - Configured to check multiple possible file paths for the DID document
    - Implemented dynamic DID document generation as a fallback
    - Added a `/debug` endpoint to help diagnose issues in production
+
+8. **Specific AT Protocol Requirements**:
+   - Updated the service type from 'AtprotoFeedGenerator' to 'BskyFeedGenerator'
+   - Updated the service ID from '#atproto_feed_generator' to '#bsky_fg'
+   - Set proper Content-Type headers (`application/json`)
+   - Added Cache-Control headers to prevent CDN caching issues
+
+#### Remaining Issues
+Despite these comprehensive solutions, we still encounter the "could not resolve identity" error, particularly in the format `could not resolve identity: did:web:localhost:3000`. This suggests that:
+
+1. **Local vs. Production Mismatch**: The error mentions `localhost:3000`, indicating this might be a client-side issue where the client is trying to resolve a local DID rather than the production one.
+
+2. **AT Protocol Resolution Process**: There may be specific aspects of how the AT Protocol resolves DIDs that we haven't fully addressed.
+
+3. **CDN/Proxy Interference**: Cloudflare (used by Render.com) might be interfering with requests to the `.well-known` directory.
+
+4. **Port Specification in DID**: The inclusion of the port in the DID might be causing resolution issues.
+
+#### Next Steps to Consider
+
+1. **Test with an absolute endpoint instead of did:web**:
+   - Create a new feed record that directly references the feed generator endpoint rather than using DID resolution
+   - This would bypass the DID resolution process entirely
+
+2. **Try a different did:web format**:
+   - Modify the DID to use the format `did:web:swarm-social.onrender.com` without the port number
+   - Update all references to this DID throughout the application
+
+3. **Investigate client-side resolution**:
+   - Check if the client (Bluesky app) is caching an old DID or has incorrect DID information
+   - Try using a different Bluesky account or client to test the feed
+
+4. **Implement a direct HTTP endpoint for DID document serving**:
+   - Create a serverless function or static hosting specifically for serving the DID document
+   - This would isolate the DID document serving from the main application
+
+5. **Redirect approach**:
+   - Set up a redirect from `/.well-known/did.json` to a predictable, cacheable URL like `/static/did.json`
+   - This might help bypass CDN/proxy caching issues
+
+6. **Custom domain without port**:
+   - Consider using a custom domain without port specification for the did:web identifier
+   - This would eliminate any potential port-related resolution issues
+
+7. **Server-side caching for DID document**:
+   - Implement server-side caching for the DID document to ensure consistent responses
+   - This would help mitigate any intermittent issues with file access
+
+8. **Direct XRPC method for feed discovery**:
+   - Investigate if there are alternative XRPC methods for feed discovery beyond DID resolution
+   - This might provide a more reliable mechanism for connecting to the feed generator
+
+9. **Implement web-fingerprinting alternatives**:
+   - Explore if the AT Protocol supports alternative discovery mechanisms like WebFinger
+
+10. **Community investigation**:
+    - Reach out to the AT Protocol/Bluesky community specifically about did:web resolution issues
+    - Other feed generator developers might have encountered and solved similar problems
+
+We will systematically work through these options, testing each one methodically while maintaining detailed logs of outcomes, to resolve the persistent DID resolution issue.
 
 ### 2. Feed Algorithm URI Registration
 
@@ -172,6 +236,14 @@ The build and deployment process needed special handling for static files and en
 
 10. **Diagnostic Endpoints**: Adding diagnostic endpoints (like `/debug`) in production can provide valuable information for troubleshooting without requiring server restarts or log access.
 
+11. **AT Protocol Service Types**: The AT Protocol requires specific service types (e.g., "BskyFeedGenerator" instead of "AtprotoFeedGenerator") for proper resolution.
+
+12. **HTTP Headers Matter**: Proper Content-Type and Cache-Control headers are crucial for ensuring correct interpretation and preventing caching issues.
+
+13. **Client-Side Resolution**: Remember that errors might be occurring on the client side during resolution, not necessarily on the server side.
+
+14. **Methodical Testing**: When dealing with complex distributed systems like the AT Protocol, systematic testing of each component is essential to isolate and fix issues.
+
 ## Reference Information
 
 ### Environment Variable Configuration
@@ -203,6 +275,8 @@ DATABASE_URL=sqlite:swarm-feed.db
 - Feed Generator Endpoint: `https://swarm-social.onrender.com`
 - DID Document URL: `https://swarm-social.onrender.com/.well-known/did.json`
 - Alternative DID Document URL: `https://swarm-social.onrender.com/did.json`
+- Debug Info: `https://swarm-social.onrender.com/debug`
+- Health Check: `https://swarm-social.onrender.com/health`
 - Feed URI: `at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.generator/swarm-community`
 
 ### Key Files
@@ -213,6 +287,7 @@ DATABASE_URL=sqlite:swarm-feed.db
 - `src/well-known.ts`: Handles serving the DID document
 - `scripts/copy-did-document.js`: Post-build script for copying the DID document
 - `scripts/deploy-did-document.js`: Script to deploy the DID document to the public directory
+- `scripts/ensure-did-document.js`: Script to ensure the DID document exists at build and startup time
 - `package.json`: Contains build scripts including the post-build hook
 - `.well-known/did.json`: Source DID document
 - `public/.well-known/did.json`: Public DID document that gets served
