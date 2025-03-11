@@ -53,8 +53,8 @@ export function startDidServer() {
           serviceEndpoint: 'https://bsky.social',
         },
         {
-          id: '#bsky_fg',
-          type: 'BskyFeedGenerator',
+          id: '#atproto_feed_generator',
+          type: 'AtprotoFeedGenerator',
           serviceEndpoint: `https://${hostname}`,
         },
       ],

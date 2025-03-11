@@ -46,8 +46,13 @@ const makeRouter = (ctx: AppContext) => {
       id: ctx.cfg.serviceDid,
       service: [
         {
-          id: '#bsky_fg',
-          type: 'BskyFeedGenerator',
+          id: '#atproto_pds',
+          type: 'AtprotoPersonalDataServer',
+          serviceEndpoint: 'https://bsky.social',
+        },
+        {
+          id: '#atproto_feed_generator',
+          type: 'AtprotoFeedGenerator',
           serviceEndpoint: `https://${ctx.cfg.hostname}`,
         },
       ],

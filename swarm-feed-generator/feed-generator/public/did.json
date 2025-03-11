@@ -3,12 +3,12 @@
     "https://www.w3.org/ns/did/v1",
     "https://w3id.org/security/suites/secp256k1-2019/v1"
   ],
-  "id": "did:web:swarm-social.onrender.com",
+  "id": "did:web:swarm-feed-generator.onrender.com",
   "verificationMethod": [
     {
-      "id": "did:web:swarm-social.onrender.com#atproto",
+      "id": "did:web:swarm-feed-generator.onrender.com#atproto",
       "type": "EcdsaSecp256k1VerificationKey2019",
-      "controller": "did:web:swarm-social.onrender.com",
+      "controller": "did:web:swarm-feed-generator.onrender.com",
       "publicKeyMultibase": "zQ3shojKAGY2sK3ThMHW7soP4tYDWLCRjJt9w14XKxkKZnnnK"
     }
   ],
@@ -19,9 +19,9 @@
       "serviceEndpoint": "https://bsky.social"
     },
     {
-      "id": "#bsky_fg",
-      "type": "BskyFeedGenerator",
-      "serviceEndpoint": "https://swarm-social.onrender.com"
+      "id": "#atproto_feed_generator",
+      "type": "AtprotoFeedGenerator",
+      "serviceEndpoint": "https://swarm-feed-generator.onrender.com"
     }
   ]
-} 
+}
