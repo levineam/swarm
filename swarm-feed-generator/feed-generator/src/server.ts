@@ -76,7 +76,7 @@ export class FeedGenerator {
     app.use(express.json())
 
     // Add a logs endpoint for debugging
-    app.get('/logs', (req: express.Request, res: express.Response) => {
+    app.get('/logs', (req, res) => {
       // This is a simple implementation that returns recent logs
       // In a production environment, you would want to implement proper log storage and retrieval
       res.status(200).json({
