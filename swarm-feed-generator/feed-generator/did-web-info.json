@@ -1,21 +1,21 @@
 {
-  "did": "did:web:swarm-social.onrender.com",
-  "domain": "swarm-social.onrender.com",
+  "did": "did:web:localhost:3000",
+  "domain": "localhost:3000",
   "signingKeyPath": "/Users/andrewleveiss/Desktop/opensource/social-app/swarm-feed-generator/feed-generator/keys/signing-key.json",
-  "createdAt": "2025-03-09T18:04:21.142Z",
-  "serviceEndpoint": "https://swarm-social.onrender.com",
+  "createdAt": "2025-03-09T18:42:06.519Z",
+  "serviceEndpoint": "https://localhost:3000",
   "didDocument": {
     "@context": [
       "https://www.w3.org/ns/did/v1",
       "https://w3id.org/security/suites/secp256k1-2019/v1"
     ],
-    "id": "did:web:swarm-social.onrender.com",
+    "id": "did:web:localhost:3000",
     "verificationMethod": [
       {
-        "id": "did:web:swarm-social.onrender.com#atproto",
+        "id": "did:web:localhost:3000#atproto",
         "type": "EcdsaSecp256k1VerificationKey2019",
-        "controller": "did:web:swarm-social.onrender.com",
-        "publicKeyMultibase": "zQ3shpSCR3uBJN5PNa5p8kr7Nfq2qsMUEppyayavmXLyCKP5r"
+        "controller": "did:web:localhost:3000",
+        "publicKeyMultibase": "zQ3shojKAGY2sK3ThMHW7soP4tYDWLCRjJt9w14XKxkKZnnnK"
       }
     ],
     "service": [
@@ -27,13 +27,13 @@
       {
         "id": "#atproto_feed_generator",
         "type": "AtprotoFeedGenerator",
-        "serviceEndpoint": "https://swarm-social.onrender.com"
+        "serviceEndpoint": "https://localhost:3000"
       }
     ]
   },
   "note": "This is the did:web for your Swarm feed generator.",
   "instructions": [
-    "Ensure the .well-known/did.json file is accessible at https://swarm-social.onrender.com/.well-known/did.json",
+    "Ensure the .well-known/did.json file is accessible at https://localhost:3000/.well-known/did.json",
     "Update the FEEDGEN_PUBLISHER_DID and FEEDGEN_SERVICE_DID in your .env file",
     "Run the publishSwarmFeedWithDidWeb.ts script to publish the feed generator record"
   ],

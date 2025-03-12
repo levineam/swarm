@@ -2,7 +2,75 @@
 
 ## Overview
 
-The feed generator is a service that generates custom feeds for the Swarm app. It is deployed to Render.com and is accessible at https://swarm-feed-generator.onrender.com.
+The Swarm Feed Generator is a custom feed generator for the Swarm app, which is a Bluesky client. The feed generator is deployed on Render.com and provides two custom feeds:
+
+1. **Swarm Community Feed**: A feed of posts from Swarm community members
+2. **Swarm Trending Feed**: A feed of trending posts from the Swarm community
+
+The feed generator is built using Node.js and Express, and it uses the AT Protocol libraries to interact with the Bluesky API.
+
+## Current Status
+
+- The feed generator service is deployed on Render.com at https://swarm-feed-generator.onrender.com
+- The feed generator record has been updated with the correct production DID (`did:web:swarm-feed-generator.onrender.com`)
+- The health endpoint is responding with "OK"
+- The DID document is being served correctly at `/.well-known/did.json`
+- The XRPC endpoints (`app.bsky.feed.getFeedSkeleton` and `app.bsky.feed.describeFeedGenerator`) are not being registered correctly
+
+## XRPC Endpoint Registration Issue
+
+We've identified that the XRPC endpoints are not being registered correctly. Our diagnostic tests show that while the service is running and the health endpoint is accessible, the XRPC endpoints are returning 404 errors.
+
+### Debugging Steps Taken
+
+1. Added detailed logging to the following files:
+   - `feed-generation.ts` - To log the registration of the `getFeedSkeleton` endpoint
+   - `describe-generator.ts` - To log the registration of the `describeFeedGenerator` endpoint
+   - `server.ts` - To log the creation and initialization of the XRPC server
+
+2. Created a test script (`testXrpcEndpoints.js`) to verify the functionality of the XRPC endpoints.
+
+3. Committed and pushed these changes to the repository for redeployment.
+
+### Next Steps
+
+1. Wait for the service to be redeployed with the added logging
+2. Check the logs for any errors during XRPC server initialization
+3. Fix any issues identified in the logs
+4. Verify that the XRPC endpoints are now accessible
+
+## Feed Generator Architecture
+
+The feed generator consists of the following components:
+
+1. **Express Server**: Handles HTTP requests and serves the feed generator API
+2. **XRPC Server**: Handles XRPC requests and routes them to the appropriate handlers
+3. **Feed Generation Methods**: Implement the logic for generating feeds
+4. **Algorithms**: Implement the specific algorithms for each feed type
+
+### Key Files
+
+- `server.ts`: Sets up the Express server and initializes the XRPC server
+- `feed-generation.ts`: Implements the `getFeedSkeleton` endpoint
+- `describe-generator.ts`: Implements the `describeFeedGenerator` endpoint
+- `swarm-community-members.ts`: Contains the list of Swarm community members
+- `algos/index.ts`: Exports the feed algorithms
+- `algos/swarm-community.ts`: Implements the Swarm community feed algorithm
+- `algos/swarm-trending.ts`: Implements the Swarm trending feed algorithm
+
+## Deployment
+
+The feed generator is deployed on Render.com. The deployment process is as follows:
+
+1. Push changes to the GitHub repository
+2. Render.com automatically detects the changes and rebuilds the service
+3. The service is deployed to the production environment
+
+## Documentation Links
+
+- [Bluesky Feed Generator Documentation](https://github.com/bluesky-social/feed-generator)
+- [AT Protocol Documentation](https://atproto.com/docs)
+- [Render.com Documentation](https://render.com/docs)
 
 ## Implementation Details
 
@@ -22,10 +90,6 @@ The feed generator currently supports the following feed algorithms:
 The feed generator uses a DID (Decentralized Identifier) to identify itself to the Bluesky network. The DID is a `did:web` identifier that points to the feed generator service.
 
 The DID document is served at `/.well-known/did.json` and contains the necessary information for the Bluesky network to verify the identity of the feed generator.
-
-## Deployment
-
-The feed generator is deployed to Render.com and is accessible at https://swarm-feed-generator.onrender.com.
 
 ## Issues and Solutions
 

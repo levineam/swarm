@@ -32,6 +32,7 @@ module.exports = {
           'H6',
           'P',
           'Admonition',
+          'Admonition.Admonition',
         ],
         impliedTextProps: [],
         suggestedTextWrappers: {
@@ -91,9 +92,9 @@ module.exports = {
     '*.lock',
     '.husky',
     'patches',
-    'bskyweb',
     '*.html',
     'bskyweb',
+    'bskyembed',
     'src/locale/locales/_build/',
     'src/locale/locales/**/*.js',
   ],
