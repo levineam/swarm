@@ -29,17 +29,13 @@ const hasGetFeedSkeleton = serverJsContent.includes(
   '/xrpc/app.bsky.feed.getFeedSkeleton',
 )
 const hasXrpcTest = serverJsContent.includes('/xrpc-test')
+const hasRootPath = serverJsContent.includes("app.get('/', (req, res)")
 
-console.log('XRPC endpoints already included in server.js:')
+console.log('Endpoints already included in server.js:')
 console.log(`- describeFeedGenerator: ${hasDescribeFeedGenerator}`)
 console.log(`- getFeedSkeleton: ${hasGetFeedSkeleton}`)
 console.log(`- xrpc-test: ${hasXrpcTest}`)
-
-// If the XRPC endpoints are already included, exit
-if (hasDescribeFeedGenerator && hasGetFeedSkeleton && hasXrpcTest) {
-  console.log('All XRPC endpoints are already included in server.js')
-  process.exit(0)
-}
+console.log(`- root path: ${hasRootPath}`)
 
 // Find the position to insert the XRPC endpoints
 // Look for the debug endpoint
@@ -56,8 +52,12 @@ if (debugEndpointEndPos === -1) {
   process.exit(1)
 }
 
-// Insert the XRPC endpoints after the debug endpoint
-const xrpcEndpoints = `
+// Prepare the endpoints to add
+let endpointsToAdd = ''
+
+// Add XRPC endpoints if they don't exist
+if (!(hasDescribeFeedGenerator && hasGetFeedSkeleton && hasXrpcTest)) {
+  endpointsToAdd += `
     // XRPC test endpoint
     app.get('/xrpc-test', (req, res) => {
       console.log('XRPC test endpoint called');
@@ -107,16 +107,132 @@ const xrpcEndpoints = `
       });
     });
 `
+}
 
-// Insert the XRPC endpoints
+// Add root path handler if it doesn't exist
+if (!hasRootPath) {
+  endpointsToAdd += `
+    // Root path handler
+    app.get('/', (req, res) => {
+      console.log('Root path called');
+      res.status(200).send(\`
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Swarm Feed Generator</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+              line-height: 1.6;
+              color: #333;
+              max-width: 800px;
+              margin: 0 auto;
+              padding: 20px;
+            }
+            h1 {
+              color: #1D9BF0;
+            }
+            .endpoint {
+              background-color: #f5f5f5;
+              padding: 10px;
+              border-radius: 5px;
+              margin-bottom: 10px;
+              font-family: monospace;
+            }
+            a {
+              color: #1D9BF0;
+              text-decoration: none;
+            }
+            a:hover {
+              text-decoration: underline;
+            }
+            .feeds {
+              margin-top: 20px;
+            }
+            .feed-item {
+              margin-bottom: 15px;
+              padding: 15px;
+              border: 1px solid #ddd;
+              border-radius: 5px;
+            }
+            .feed-title {
+              font-weight: bold;
+              margin-bottom: 5px;
+            }
+            .feed-uri {
+              font-family: monospace;
+              font-size: 0.9em;
+              background-color: #f5f5f5;
+              padding: 5px;
+              border-radius: 3px;
+              word-break: break-all;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>Swarm Feed Generator</h1>
+          <p>This is the feed generator service for the <a href="https://swarm-social.onrender.com" target="_blank">Swarm</a> community platform on Bluesky.</p>
+          
+          <h2>Available Feeds</h2>
+          <div class="feeds">
+            <div class="feed-item">
+              <div class="feed-title">Swarm Community</div>
+              <p>A feed of posts from Swarm community members</p>
+              <div class="feed-uri">at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.generator/swarm-community</div>
+            </div>
+            <div class="feed-item">
+              <div class="feed-title">Swarm Trending</div>
+              <p>A feed of trending posts from the Swarm community</p>
+              <div class="feed-uri">at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.generator/swarm-trending</div>
+            </div>
+          </div>
+          
+          <h2>API Endpoints</h2>
+          <div class="endpoint">GET /health - Health check endpoint</div>
+          <div class="endpoint">GET /debug - Debug information</div>
+          <div class="endpoint">GET /xrpc-test - Test XRPC functionality</div>
+          <div class="endpoint">GET /xrpc/app.bsky.feed.describeFeedGenerator - Feed generator metadata</div>
+          <div class="endpoint">GET /xrpc/app.bsky.feed.getFeedSkeleton?feed={feedUri} - Get feed content</div>
+          
+          <h2>How to Use</h2>
+          <p>To use these feeds in your Bluesky client:</p>
+          <ol>
+            <li>Open the Bluesky app</li>
+            <li>Go to the Discover tab</li>
+            <li>Search for "Swarm"</li>
+            <li>Add the Swarm Community or Swarm Trending feed</li>
+          </ol>
+          
+          <h2>Integration</h2>
+          <p>This feed generator is integrated with the <a href="https://swarm-social.onrender.com" target="_blank">Swarm Social</a> platform, which provides a customized Bluesky experience with community features.</p>
+          
+          <footer style="margin-top: 40px; border-top: 1px solid #eee; padding-top: 20px;">
+            <p>© ${new Date().getFullYear()} Swarm Community Platform</p>
+          </footer>
+        </body>
+        </html>
+      \`);
+    });
+`
+}
+
+// If there are no endpoints to add, exit
+if (!endpointsToAdd) {
+  console.log('All endpoints are already included in server.js')
+  process.exit(0)
+}
+
+// Insert the endpoints
 serverJsContent =
   serverJsContent.slice(0, debugEndpointEndPos + 3) +
-  xrpcEndpoints +
+  endpointsToAdd +
   serverJsContent.slice(debugEndpointEndPos + 3)
 
 // Write the modified server.js file
 fs.writeFileSync(serverJsPath, serverJsContent)
 console.log(`Wrote ${serverJsContent.length} bytes to server.js`)
 
-console.log('XRPC endpoints added to server.js')
+console.log('Endpoints added to server.js')
 console.log('=== SERVER MODIFIED ===')
