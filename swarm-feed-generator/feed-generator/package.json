@@ -9,9 +9,10 @@
   "scripts": {
     "publishFeed": "ts-node scripts/publishFeedGen.ts",
     "unpublishFeed": "ts-node scripts/unpublishFeedGen.ts",
-    "start": "node scripts/ensure-did-document.js && ts-node src/index.ts",
+    "start": "node scripts/ensure-did-document.js && node scripts/check-render-deployment.js && ts-node src/index.ts",
     "build": "tsc",
-    "postbuild": "node scripts/copy-did-document.js && node scripts/ensure-did-document.js"
+    "postbuild": "node scripts/copy-did-document.js && node scripts/ensure-did-document.js",
+    "check-deployment": "node scripts/check-render-deployment.js"
   },
   "dependencies": {
     "@atproto/api": "^0.13.35",
