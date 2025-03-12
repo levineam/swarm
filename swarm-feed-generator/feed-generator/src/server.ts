@@ -61,16 +61,22 @@ export class FeedGenerator {
     const firehose = new FirehoseSubscription(db, cfg.subscriptionEndpoint)
 
     // Logging middleware
-    app.use((req, res, next) => {
-      log(`${req.method} ${req.url}`)
-      next()
-    })
+    app.use(
+      (
+        req: express.Request,
+        res: express.Response,
+        next: express.NextFunction,
+      ) => {
+        log(`${req.method} ${req.url}`)
+        next()
+      },
+    )
 
     app.use(cors())
     app.use(express.json())
 
     // Add a logs endpoint for debugging
-    app.get('/logs', (req, res) => {
+    app.get('/logs', (req: express.Request, res: express.Response) => {
       // This is a simple implementation that returns recent logs
       // In a production environment, you would want to implement proper log storage and retrieval
       res.status(200).json({
@@ -87,13 +93,13 @@ export class FeedGenerator {
     })
 
     // Health check endpoint
-    app.get('/health', (req, res) => {
+    app.get('/health', (req: express.Request, res: express.Response) => {
       log('Health check endpoint called')
       res.status(200).send('OK')
     })
 
     // Debug endpoint
-    app.get('/debug', (req, res) => {
+    app.get('/debug', (req: express.Request, res: express.Response) => {
       log('Debug endpoint called')
       res.status(200).json({
         message: 'Debug information',
@@ -108,7 +114,7 @@ export class FeedGenerator {
     })
 
     // XRPC test endpoint
-    app.get('/xrpc-test', (req, res) => {
+    app.get('/xrpc-test', (req: express.Request, res: express.Response) => {
       log('XRPC test endpoint called')
       res.status(200).json({
         message: 'XRPC test endpoint',

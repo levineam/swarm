@@ -19,10 +19,16 @@ export function startDidServer() {
   const app = express()
 
   // Add request logging middleware
-  app.use((req, res, next) => {
-    console.log('Incoming request:', req.method, req.url)
-    next()
-  })
+  app.use(
+    (
+      req: express.Request,
+      res: express.Response,
+      next: express.NextFunction,
+    ) => {
+      console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`)
+      next()
+    },
+  )
 
   // Serve static files from the public directory with dotfiles allowed
   app.use(
@@ -61,103 +67,84 @@ export function startDidServer() {
     }
   }
 
-  // Direct routes for serving the DID document
-  app.get('/.well-known/did.json', (req, res) => {
-    console.log('Serving DID document from /.well-known/did.json route')
+  // Serve the DID document at /.well-known/did.json
+  app.get(
+    '/.well-known/did.json',
+    (req: express.Request, res: express.Response) => {
+      console.log('Serving DID document from /.well-known/did.json')
 
-    // Set Cache-Control header to prevent caching by CDN
-    res.set('Cache-Control', 'no-store')
-    res.set('Content-Type', 'application/json')
+      // Set Cache-Control header to prevent caching by CDN
+      res.set('Cache-Control', 'no-store')
 
-    // Try to read from various possible locations
-    const possiblePaths = [
-      path.join(__dirname, '../public/.well-known/did.json'),
-      path.join(__dirname, '../.well-known/did.json'),
-      path.join(__dirname, '../public/did.json'),
-      path.join(__dirname, '../did.json'),
-    ]
-
-    // Log all paths we're checking
-    console.log('Checking the following paths for DID document:')
-    possiblePaths.forEach((p) => console.log(` - ${p}`))
-
-    // Try each path
-    for (const filePath of possiblePaths) {
-      if (fs.existsSync(filePath)) {
-        console.log(`Found DID document at ${filePath}`)
-        try {
-          const didDocument = JSON.parse(fs.readFileSync(filePath, 'utf8'))
-          return res.json(didDocument)
-        } catch (error) {
-          console.error(`Error reading DID document from ${filePath}:`, error)
-          // Continue to next file if there's an error
-        }
+      // Check if the DID document exists in the well-known directory
+      const didJsonPath = path.join(
+        path.join(__dirname, '../public/.well-known'),
+        'did.json',
+      )
+      if (fs.existsSync(didJsonPath)) {
+        console.log(`Serving DID document from ${didJsonPath}`)
+        return res.sendFile(didJsonPath)
       }
+
+      // If not found, generate a basic DID document
+      console.log(
+        'DID document not found in well-known directory, generating a basic one',
+      )
+      const didDocument = createDidDocument()
+      return res.json(didDocument)
+    },
+  )
+
+  // Also serve the DID document at /did.json for convenience
+  app.get('/did.json', (req: express.Request, res: express.Response) => {
+    console.log('Serving DID document from /did.json')
+
+    // Set Cache-Control header to prevent caching by CDN
+    res.set('Cache-Control', 'no-store')
+
+    // Check if the DID document exists in the public directory
+    const didJsonPath = path.join(path.join(__dirname, '../public'), 'did.json')
+    if (fs.existsSync(didJsonPath)) {
+      console.log(`Serving DID document from ${didJsonPath}`)
+      return res.sendFile(didJsonPath)
     }
 
-    // If no file found, generate a basic DID document
-    console.log('No DID document found, generating one dynamically')
-    return res.json(createDidDocument())
+    // If not found, generate a basic DID document
+    console.log(
+      'DID document not found in public directory, generating a basic one',
+    )
+    const didDocument = createDidDocument()
+    return res.json(didDocument)
   })
 
-  // Also serve the DID document at /did.json for redundancy
-  app.get('/did.json', (req, res) => {
-    console.log('Serving DID document from /did.json route')
-    // Set Cache-Control header to prevent caching by CDN
-    res.set('Cache-Control', 'no-store')
-    res.set('Content-Type', 'application/json')
-
-    // Return the DID document directly instead of redirecting
-    return res.json(createDidDocument())
-  })
-
-  // Add a debug endpoint to help diagnose issues
-  app.get('/debug', (req, res) => {
-    console.log('Serving debug information')
-
-    // Set Cache-Control header to prevent caching by CDN
-    res.set('Cache-Control', 'no-store')
-
+  // Add a debug endpoint
+  app.get('/debug', (req: express.Request, res: express.Response) => {
+    console.log('Debug request received')
     const debug = {
-      environment: {
-        NODE_ENV: process.env.NODE_ENV,
-        PORT: process.env.PORT,
-        FEEDGEN_HOSTNAME: process.env.FEEDGEN_HOSTNAME,
-        FEEDGEN_LISTENHOST: process.env.FEEDGEN_LISTENHOST,
-        FEEDGEN_PUBLISHER_DID: process.env.FEEDGEN_PUBLISHER_DID,
-        FEEDGEN_SERVICE_DID: process.env.FEEDGEN_SERVICE_DID,
-      },
-      paths: {
-        currentDir: __dirname,
-        publicDir: path.join(__dirname, '../public'),
-        wellKnownDir: path.join(__dirname, '../public/.well-known'),
-      },
-      files: {
-        publicDirExists: fs.existsSync(path.join(__dirname, '../public')),
-        wellKnownDirExists: fs.existsSync(
-          path.join(__dirname, '../public/.well-known'),
-        ),
-        didJsonExists: fs.existsSync(
-          path.join(__dirname, '../public/.well-known/did.json'),
-        ),
-        alternateDidJsonExists: fs.existsSync(
-          path.join(__dirname, '../public/did.json'),
-        ),
-      },
-      didDocument: createDidDocument(),
+      serviceDid: process.env.FEEDGEN_SERVICE_DID || 'not set',
+      hostname: process.env.FEEDGEN_HOSTNAME || 'not set',
+      publicDir: path.join(__dirname, '../public'),
+      wellKnownDir: path.join(__dirname, '../public/.well-known'),
+      didJsonExists: fs.existsSync(
+        path.join(path.join(__dirname, '../public/.well-known'), 'did.json'),
+      ),
+      publicDirExists: fs.existsSync(path.join(__dirname, '../public')),
+      wellKnownDirExists: fs.existsSync(
+        path.join(__dirname, '../public/.well-known'),
+      ),
+      env: process.env,
     }
-
     return res.json(debug)
   })
 
   // Add a health check endpoint
-  app.get('/health', (req, res) => {
+  app.get('/health', (req: express.Request, res: express.Response) => {
     console.log('Health check request received')
     return res.status(200).send('OK')
   })
 
   // Add a catch-all route for debugging
-  app.use('*', (req, res) => {
+  app.use('*', (req: express.Request, res: express.Response) => {
     console.log(`Received request for unknown route: ${req.originalUrl}`)
     res.status(404).send({
       error: 'Not Found',
