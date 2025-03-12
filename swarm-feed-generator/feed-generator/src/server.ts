@@ -245,6 +245,111 @@ export class FeedGenerator {
     this.server = this.app.listen(port, this.cfg.listenhost)
     await events.once(this.server, 'listening')
     log(`Server is now listening on port ${port}`)
+
+    // Add root path handler
+    this.app.get('/', (req, res) => {
+      console.log('Root path called')
+      res.status(200).send(`
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Swarm Feed Generator</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+              line-height: 1.6;
+              color: #333;
+              max-width: 800px;
+              margin: 0 auto;
+              padding: 20px;
+            }
+            h1 {
+              color: #1D9BF0;
+            }
+            .endpoint {
+              background-color: #f5f5f5;
+              padding: 10px;
+              border-radius: 5px;
+              margin-bottom: 10px;
+              font-family: monospace;
+            }
+            a {
+              color: #1D9BF0;
+              text-decoration: none;
+            }
+            a:hover {
+              text-decoration: underline;
+            }
+            .feeds {
+              margin-top: 20px;
+            }
+            .feed-item {
+              margin-bottom: 15px;
+              padding: 15px;
+              border: 1px solid #ddd;
+              border-radius: 5px;
+            }
+            .feed-title {
+              font-weight: bold;
+              margin-bottom: 5px;
+            }
+            .feed-uri {
+              font-family: monospace;
+              font-size: 0.9em;
+              background-color: #f5f5f5;
+              padding: 5px;
+              border-radius: 3px;
+              word-break: break-all;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>Swarm Feed Generator</h1>
+          <p>This is the feed generator service for the <a href="https://swarm-social.onrender.com" target="_blank">Swarm</a> community platform on Bluesky.</p>
+          
+          <h2>Available Feeds</h2>
+          <div class="feeds">
+            <div class="feed-item">
+              <div class="feed-title">Swarm Community</div>
+              <p>A feed of posts from Swarm community members</p>
+              <div class="feed-uri">at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.generator/swarm-community</div>
+            </div>
+            <div class="feed-item">
+              <div class="feed-title">Swarm Trending</div>
+              <p>A feed of trending posts from the Swarm community</p>
+              <div class="feed-uri">at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.generator/swarm-trending</div>
+            </div>
+          </div>
+          
+          <h2>API Endpoints</h2>
+          <div class="endpoint">GET /health - Health check endpoint</div>
+          <div class="endpoint">GET /debug - Debug information</div>
+          <div class="endpoint">GET /xrpc-test - Test XRPC functionality</div>
+          <div class="endpoint">GET /xrpc/app.bsky.feed.describeFeedGenerator - Feed generator metadata</div>
+          <div class="endpoint">GET /xrpc/app.bsky.feed.getFeedSkeleton?feed={feedUri} - Get feed content</div>
+          
+          <h2>How to Use</h2>
+          <p>To use these feeds in your Bluesky client:</p>
+          <ol>
+            <li>Open the Bluesky app</li>
+            <li>Go to the Discover tab</li>
+            <li>Search for "Swarm"</li>
+            <li>Add the Swarm Community or Swarm Trending feed</li>
+          </ol>
+          
+          <h2>Integration</h2>
+          <p>This feed generator is integrated with the <a href="https://swarm-social.onrender.com" target="_blank">Swarm Social</a> platform, which provides a customized Bluesky experience with community features.</p>
+          
+          <footer style="margin-top: 40px; border-top: 1px solid #eee; padding-top: 20px;">
+            <p>© ${new Date().getFullYear()} Swarm Community Platform</p>
+          </footer>
+        </body>
+        </html>
+      `)
+    })
+
     return this.server
   }
 }
