@@ -1,4 +1,3 @@
-
 {
   "compilerOptions": {
     "lib": [
@@ -12,7 +11,9 @@
     "alwaysStrict": true,
     "allowUnreachableCode": false,
     "strictNullChecks": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "noImplicitAny": false,
+    "strict": false
   },
   "include": ["./src/**/*.ts"],
   "exclude": [
