@@ -3,6 +3,7 @@ const path = require('path')
 
 console.log('=== MODIFYING SERVER ON STARTUP ===')
 console.log('Current working directory:', process.cwd())
+console.log('Script execution timestamp:', new Date().toISOString())
 
 // Check if the dist directory exists
 const distDir = path.join(process.cwd(), 'dist')
@@ -52,11 +53,17 @@ if (debugEndpointEndPos === -1) {
   process.exit(1)
 }
 
+console.log(`Found debug endpoint at position ${debugEndpointPos}`)
+console.log(
+  `Found end of debug endpoint handler at position ${debugEndpointEndPos}`,
+)
+
 // Prepare the endpoints to add
 let endpointsToAdd = ''
 
 // Add XRPC endpoints if they don't exist
 if (!(hasDescribeFeedGenerator && hasGetFeedSkeleton && hasXrpcTest)) {
+  console.log('Adding XRPC endpoints to server.js')
   endpointsToAdd += `
     // XRPC test endpoint
     app.get('/xrpc-test', (req, res) => {
@@ -111,6 +118,7 @@ if (!(hasDescribeFeedGenerator && hasGetFeedSkeleton && hasXrpcTest)) {
 
 // Add root path handler if it doesn't exist
 if (!hasRootPath) {
+  console.log('Adding root path handler to server.js')
   endpointsToAdd += `
     // Root path handler
     app.get('/', (req, res) => {
@@ -209,7 +217,7 @@ if (!hasRootPath) {
           <p>This feed generator is integrated with the <a href="https://swarm-social.onrender.com" target="_blank">Swarm Social</a> platform, which provides a customized Bluesky experience with community features.</p>
           
           <footer style="margin-top: 40px; border-top: 1px solid #eee; padding-top: 20px;">
-            <p>© ${new Date().getFullYear()} Swarm Community Platform</p>
+            <p>© \${new Date().getFullYear()} Swarm Community Platform</p>
           </footer>
         </body>
         </html>
@@ -231,8 +239,22 @@ serverJsContent =
   serverJsContent.slice(debugEndpointEndPos + 3)
 
 // Write the modified server.js file
-fs.writeFileSync(serverJsPath, serverJsContent)
-console.log(`Wrote ${serverJsContent.length} bytes to server.js`)
+try {
+  fs.writeFileSync(serverJsPath, serverJsContent)
+  console.log(`Wrote ${serverJsContent.length} bytes to server.js`)
+  console.log('Endpoints added to server.js')
+} catch (error) {
+  console.error(`Error writing to server.js: ${error.message}`)
+  process.exit(1)
+}
 
-console.log('Endpoints added to server.js')
+// Create a marker file to indicate that the script has run
+const markerFilePath = path.join(process.cwd(), '.modify-server-marker')
+try {
+  fs.writeFileSync(markerFilePath, new Date().toISOString())
+  console.log(`Created marker file at ${markerFilePath}`)
+} catch (error) {
+  console.error(`Error creating marker file: ${error.message}`)
+}
+
 console.log('=== SERVER MODIFIED ===')
