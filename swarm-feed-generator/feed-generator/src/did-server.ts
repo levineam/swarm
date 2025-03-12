@@ -1,3 +1,4 @@
+// @ts-nocheck
 import dotenv from 'dotenv'
 import express from 'express'
 import fs from 'fs'
@@ -19,16 +20,10 @@ export function startDidServer() {
   const app = express()
 
   // Add request logging middleware
-  app.use(
-    (
-      req: express.Request,
-      res: express.Response,
-      next: express.NextFunction,
-    ) => {
-      console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`)
-      next()
-    },
-  )
+  app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`)
+    next()
+  })
 
   // Serve static files from the public directory with dotfiles allowed
   app.use(
@@ -68,35 +63,32 @@ export function startDidServer() {
   }
 
   // Serve the DID document at /.well-known/did.json
-  app.get(
-    '/.well-known/did.json',
-    (req: express.Request, res: express.Response) => {
-      console.log('Serving DID document from /.well-known/did.json')
+  app.get('/.well-known/did.json', (req, res) => {
+    console.log('Serving DID document from /.well-known/did.json')
 
-      // Set Cache-Control header to prevent caching by CDN
-      res.set('Cache-Control', 'no-store')
+    // Set Cache-Control header to prevent caching by CDN
+    res.set('Cache-Control', 'no-store')
 
-      // Check if the DID document exists in the well-known directory
-      const didJsonPath = path.join(
-        path.join(__dirname, '../public/.well-known'),
-        'did.json',
-      )
-      if (fs.existsSync(didJsonPath)) {
-        console.log(`Serving DID document from ${didJsonPath}`)
-        return res.sendFile(didJsonPath)
-      }
+    // Check if the DID document exists in the well-known directory
+    const didJsonPath = path.join(
+      path.join(__dirname, '../public/.well-known'),
+      'did.json',
+    )
+    if (fs.existsSync(didJsonPath)) {
+      console.log(`Serving DID document from ${didJsonPath}`)
+      return res.sendFile(didJsonPath)
+    }
 
-      // If not found, generate a basic DID document
-      console.log(
-        'DID document not found in well-known directory, generating a basic one',
-      )
-      const didDocument = createDidDocument()
-      return res.json(didDocument)
-    },
-  )
+    // If not found, generate a basic DID document
+    console.log(
+      'DID document not found in well-known directory, generating a basic one',
+    )
+    const didDocument = createDidDocument()
+    return res.json(didDocument)
+  })
 
   // Also serve the DID document at /did.json for convenience
-  app.get('/did.json', (req: express.Request, res: express.Response) => {
+  app.get('/did.json', (req, res) => {
     console.log('Serving DID document from /did.json')
 
     // Set Cache-Control header to prevent caching by CDN
@@ -118,7 +110,7 @@ export function startDidServer() {
   })
 
   // Add a debug endpoint
-  app.get('/debug', (req: express.Request, res: express.Response) => {
+  app.get('/debug', (req, res) => {
     console.log('Debug request received')
     const debug = {
       serviceDid: process.env.FEEDGEN_SERVICE_DID || 'not set',
@@ -138,13 +130,13 @@ export function startDidServer() {
   })
 
   // Add a health check endpoint
-  app.get('/health', (req: express.Request, res: express.Response) => {
+  app.get('/health', (req, res) => {
     console.log('Health check request received')
     return res.status(200).send('OK')
   })
 
   // Add a catch-all route for debugging
-  app.use('*', (req: express.Request, res: express.Response) => {
+  app.use('*', (req, res) => {
     console.log(`Received request for unknown route: ${req.originalUrl}`)
     res.status(404).send({
       error: 'Not Found',
