@@ -1,17 +1,29 @@
 import { DidResolver, MemoryCache } from '@atproto/identity'
+import cors from 'cors'
 import events from 'events'
 import express from 'express'
-import fs from 'fs'
 import http from 'http'
-import path from 'path'
 
 import { AppContext, Config } from './config'
 import { createDb, Database, migrateToLatest } from './db'
-import { createServer } from './lexicon'
+import { createServer as createXrpcServer } from './lexicon'
 import describeGenerator from './methods/describe-generator'
 import feedGeneration from './methods/feed-generation'
 import { FirehoseSubscription } from './subscription'
-import wellKnown from './well-known'
+import makeWellKnownRouter from './well-known'
+
+// Store logs in memory for debugging
+const logs: string[] = []
+function log(message: string) {
+  const timestamp = new Date().toISOString()
+  const logMessage = `${timestamp} - ${message}`
+  console.log(logMessage)
+  logs.push(logMessage)
+  // Keep only the last 1000 log messages
+  if (logs.length > 1000) {
+    logs.shift()
+  }
+}
 
 export class FeedGenerator {
   public app: express.Application
@@ -33,184 +45,143 @@ export class FeedGenerator {
   }
 
   static create(cfg: Config) {
+    log('=== CREATING SERVER ===')
+    log(
+      'Configuration: ' +
+        JSON.stringify({
+          port: cfg.port,
+          hostname: cfg.hostname,
+          serviceDid: cfg.serviceDid,
+          publisherDid: cfg.publisherDid,
+        }),
+    )
+
     const app = express()
     const db = createDb(cfg.sqliteLocation)
     const firehose = new FirehoseSubscription(db, cfg.subscriptionEndpoint)
 
+    // Logging middleware
+    app.use((req, res, next) => {
+      log(`${req.method} ${req.url}`)
+      next()
+    })
+
+    app.use(cors())
+    app.use(express.json())
+
+    // Add a logs endpoint for debugging
+    app.get('/logs', (req, res) => {
+      // This is a simple implementation that returns recent logs
+      // In a production environment, you would want to implement proper log storage and retrieval
+      res.status(200).json({
+        message: 'This endpoint returns recent logs for debugging purposes',
+        environment: process.env.NODE_ENV,
+        logs: logs.slice(-100), // Return the last 100 logs
+        config: {
+          port: cfg.port,
+          hostname: cfg.hostname,
+          serviceDid: cfg.serviceDid,
+          publisherDid: cfg.publisherDid,
+        },
+      })
+    })
+
+    // Health check endpoint
+    app.get('/health', (req, res) => {
+      log('Health check endpoint called')
+      res.status(200).send('OK')
+    })
+
+    // Debug endpoint
+    app.get('/debug', (req, res) => {
+      log('Debug endpoint called')
+      res.status(200).json({
+        message: 'Debug information',
+        environment: process.env.NODE_ENV,
+        config: {
+          port: cfg.port,
+          hostname: cfg.hostname,
+          serviceDid: cfg.serviceDid,
+          publisherDid: cfg.publisherDid,
+        },
+      })
+    })
+
+    // XRPC test endpoint
+    app.get('/xrpc-test', (req, res) => {
+      log('XRPC test endpoint called')
+      res.status(200).json({
+        message: 'XRPC test endpoint',
+        xrpcAvailable: true,
+      })
+    })
+
+    // Add well-known routes
     const didCache = new MemoryCache()
     const didResolver = new DidResolver({
       plcUrl: 'https://plc.directory',
       didCache,
     })
+    const wellKnownRouter = makeWellKnownRouter({ cfg, db, didResolver })
+    app.use(wellKnownRouter)
 
-    console.log('Creating XRPC server...')
-    const server = createServer({
-      validateResponse: true,
-      payload: {
-        jsonLimit: 100 * 1024, // 100kb
-        textLimit: 100 * 1024, // 100kb
-        blobLimit: 5 * 1024 * 1024, // 5mb
-      },
-    })
-    console.log('XRPC server created successfully.')
+    // Create XRPC server
+    log('Creating XRPC server...')
+    try {
+      const xrpcServer = createXrpcServer({})
+      log('XRPC server created successfully')
+      log('XRPC server object keys: ' + Object.keys(xrpcServer).join(', '))
 
-    const ctx: AppContext = {
-      db,
-      didResolver,
-      cfg,
-    }
-
-    // Log configuration on startup
-    console.log('Feed Generator Configuration:')
-    console.log('- HOSTNAME:', cfg.hostname)
-    console.log('- PUBLISHER_DID:', cfg.publisherDid)
-    console.log('- SERVICE_DID:', cfg.serviceDid)
-    console.log('- PORT:', cfg.port)
-    console.log('- LISTENHOST:', cfg.listenhost)
-
-    // Serve static files from the public directory
-    app.use(express.static(path.join(__dirname, '../public')))
-
-    // Add a direct route for the DID document
-    app.get('/.well-known/did.json', (req, res) => {
-      console.log('Direct request for DID document received')
-
-      // Try to find the DID document in various locations
-      const possiblePaths = [
-        path.join(__dirname, '../public/.well-known/did.json'),
-        path.join(process.cwd(), 'public/.well-known/did.json'),
-        path.join(process.cwd(), '.well-known/did.json'),
-        path.join(__dirname, '../.well-known/did.json'),
-      ]
-
-      console.log('Checking for DID document in the following paths:')
-      possiblePaths.forEach((p) => console.log(`- ${p}`))
-
-      // Try each path
-      for (const didPath of possiblePaths) {
-        if (fs.existsSync(didPath)) {
-          console.log(`Found DID document at ${didPath}, serving it directly`)
-          return res.sendFile(didPath)
+      if (xrpcServer.app) {
+        log(
+          'XRPC server.app object keys: ' +
+            Object.keys(xrpcServer.app).join(', '),
+        )
+        if (xrpcServer.app.bsky) {
+          log(
+            'XRPC server.app.bsky object keys: ' +
+              Object.keys(xrpcServer.app.bsky).join(', '),
+          )
+          if (xrpcServer.app.bsky.feed) {
+            log(
+              'XRPC server.app.bsky.feed object keys: ' +
+                Object.keys(xrpcServer.app.bsky.feed).join(', '),
+            )
+          } else {
+            log('ERROR: XRPC server.app.bsky.feed is undefined')
+          }
+        } else {
+          log('ERROR: XRPC server.app.bsky is undefined')
         }
+      } else {
+        log('ERROR: XRPC server.app is undefined')
       }
 
-      // If no file is found, generate a DID document
-      console.log('No DID document file found, generating one')
-      const didDocument = {
-        '@context': [
-          'https://www.w3.org/ns/did/v1',
-          'https://w3id.org/security/suites/secp256k1-2019/v1',
-        ],
-        id: cfg.serviceDid,
-        service: [
-          {
-            id: '#atproto_pds',
-            type: 'AtprotoPersonalDataServer',
-            serviceEndpoint: 'https://bsky.social',
-          },
-          {
-            id: '#atproto_feed_generator',
-            type: 'AtprotoFeedGenerator',
-            serviceEndpoint: `https://${cfg.hostname}`,
-          },
-        ],
+      // Create AppContext
+      const ctx: AppContext = {
+        db,
+        didResolver,
+        cfg,
       }
 
-      res.json(didDocument)
-    })
+      // Register methods
+      log('Registering XRPC methods...')
+      feedGeneration(xrpcServer, ctx)
+      describeGenerator(xrpcServer, ctx)
+      log('XRPC methods registered successfully')
 
-    // Add a debug endpoint to help diagnose issues
-    app.get('/debug', (req, res) => {
-      const debugInfo = {
-        environment: {
-          NODE_ENV: process.env.NODE_ENV,
-          PORT: process.env.PORT,
-          FEEDGEN_HOSTNAME: process.env.FEEDGEN_HOSTNAME,
-          FEEDGEN_LISTENHOST: process.env.FEEDGEN_LISTENHOST,
-          FEEDGEN_PUBLISHER_DID: process.env.FEEDGEN_PUBLISHER_DID,
-          FEEDGEN_SERVICE_DID: process.env.FEEDGEN_SERVICE_DID,
-        },
-        config: {
-          hostname: cfg.hostname,
-          publisherDid: cfg.publisherDid,
-          serviceDid: cfg.serviceDid,
-          port: cfg.port,
-          listenhost: cfg.listenhost,
-        },
-        paths: {
-          currentDir: __dirname,
-          publicDir: path.join(__dirname, '../public'),
-          wellKnownDir: path.join(__dirname, '../public/.well-known'),
-          cwd: process.cwd(),
-        },
-        files: {
-          publicDirExists: fs.existsSync(path.join(__dirname, '../public')),
-          wellKnownDirExists: fs.existsSync(
-            path.join(__dirname, '../public/.well-known'),
-          ),
-          didJsonExists: fs.existsSync(
-            path.join(__dirname, '../public/.well-known/did.json'),
-          ),
-          alternateDidJsonExists: fs.existsSync(
-            path.join(__dirname, '../did.json'),
-          ),
-        },
-        didDocument: {
-          '@context': [
-            'https://www.w3.org/ns/did/v1',
-            'https://w3id.org/security/suites/secp256k1-2019/v1',
-          ],
-          id: cfg.serviceDid,
-          verificationMethod: [
-            {
-              id: `${cfg.serviceDid}#atproto`,
-              type: 'EcdsaSecp256k1VerificationKey2019',
-              controller: cfg.serviceDid,
-              publicKeyMultibase:
-                'zQ3shojKAGY2sK3ThMHW7soP4tYDWLCRjJt9w14XKxkKZnnnK',
-            },
-          ],
-          service: [
-            {
-              id: '#atproto_pds',
-              type: 'AtprotoPersonalDataServer',
-              serviceEndpoint: 'https://bsky.social',
-            },
-            {
-              id: '#atproto_feed_generator',
-              type: 'AtprotoFeedGenerator',
-              serviceEndpoint: `https://${cfg.hostname}`,
-            },
-          ],
-        },
+      // Mount XRPC routes
+      log('Mounting XRPC routes...')
+      if (xrpcServer.xrpc && xrpcServer.xrpc.router) {
+        app.use(xrpcServer.xrpc.router)
+        log('XRPC routes mounted successfully')
+      } else {
+        log('ERROR: xrpcServer.xrpc.router is undefined')
       }
-
-      res.json(debugInfo)
-    })
-
-    // Add a health endpoint
-    app.get('/health', (req, res) => {
-      res.send('OK')
-    })
-
-    // Add a test endpoint to check if the XRPC router is working
-    app.get('/xrpc-test', (req, res) => {
-      res.json({ message: 'XRPC router is working' })
-    })
-
-    console.log('Registering feed generation endpoint...')
-    feedGeneration(server, ctx)
-    console.log('Feed generation endpoint registered.')
-
-    console.log('Registering describe generator endpoint...')
-    describeGenerator(server, ctx)
-    console.log('Describe generator endpoint registered.')
-
-    console.log('Adding XRPC router to Express app...')
-    app.use(server.xrpc.router)
-    console.log('XRPC router added to Express app.')
-
-    app.use(wellKnown(ctx))
+    } catch (err) {
+      log('Error creating XRPC server: ' + err)
+      console.error('Failed to create XRPC server:', err)
+    }
 
     return new FeedGenerator(app, db, firehose, cfg)
   }
@@ -224,10 +195,10 @@ export class FeedGenerator {
       ? parseInt(process.env.PORT, 10)
       : this.cfg.port
 
-    console.log(`Starting server on ${this.cfg.listenhost}:${port}`)
+    log(`Starting server on port ${port}`)
     this.server = this.app.listen(port, this.cfg.listenhost)
     await events.once(this.server, 'listening')
-    console.log(`Server is now listening on ${this.cfg.listenhost}:${port}`)
+    log(`Server is now listening on port ${port}`)
     return this.server
   }
 }
