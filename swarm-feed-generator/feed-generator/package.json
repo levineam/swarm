@@ -13,7 +13,8 @@
     "build": "tsc",
     "postbuild": "node scripts/copy-did-document.js && node scripts/ensure-did-document.js && node scripts/add-xrpc-endpoints.js",
     "check-deployment": "node scripts/check-render-deployment.js",
-    "check-deployment-status": "node scripts/check-deployment-status.js"
+    "check-deployment-status": "node scripts/check-deployment-status.js",
+    "check-server": "node scripts/check-server-js.js"
   },
   "dependencies": {
     "@atproto/api": "^0.13.35",
@@ -24,7 +25,7 @@
     "@atproto/syntax": "^0.1.2",
     "@atproto/xrpc-server": "^0.7.9",
     "@did-plc/lib": "^0.0.4",
-    "axios": "^1.8.2",
+    "axios": "^1.8.3",
     "better-sqlite3": "^11.3.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
