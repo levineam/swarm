@@ -13,11 +13,10 @@ The feed generator is built using Node.js and Express, and it uses the AT Protoc
 
 - The feed generator service is deployed on Render.com at https://swarm-feed-generator.onrender.com
 - The feed generator record has been updated with the correct production DID (`did:web:swarm-feed-generator.onrender.com`)
-- The health endpoint is responding with "OK"
-- The DID document is being served correctly at `/.well-known/did.json`
-- The XRPC endpoints (`app.bsky.feed.getFeedSkeleton` and `app.bsky.feed.describeFeedGenerator`) are now working correctly
+- The XRPC endpoints (`app.bsky.feed.getFeedSkeleton` and `app.bsky.feed.describeFeedGenerator`) have been implemented and were previously working correctly
 - A runtime modification script has been implemented to ensure XRPC endpoints are always available
 - A root path handler has been added to provide a user-friendly landing page with information about the available feeds and endpoints
+- **Current Issue (March 12, 2025)**: The service is currently returning a 502 Bad Gateway error for all endpoints. This is likely due to the service being in the process of deploying our latest changes or experiencing deployment issues. We need to check the Render dashboard for deployment logs and status.
 
 ## Service Architecture
 
@@ -609,36 +608,38 @@ This approach ensures that the XRPC endpoints are always available, even if ther
 
 ## Next Steps
 
-Now that the feed generator is fully operational with working XRPC endpoints and a user-friendly landing page, we can focus on enhancing its functionality:
+1. **Resolve 502 Bad Gateway Issue**:
+   - Check the Render dashboard for deployment logs and status
+   - Verify if the deployment is in progress or if there are any errors
+   - If necessary, trigger a manual redeployment
+   - Monitor the service until it returns to normal operation
 
-1. **Resolve Hostname/URL Discrepancy**:
-   - Update the technical architecture document to reflect the current deployment setup with two separate services
-   - Ensure consistent references to the correct hostnames throughout the documentation and code
+2. **Verify Root Path Handler**:
+   - Once the service is back online, verify that the root path handler is working correctly
+   - Ensure the landing page displays properly with all the necessary information
+   - Test all links and endpoints mentioned on the landing page
 
-2. **Investigate 405 Errors in Swarm Social**:
-   - Analyze the 405 Method Not Allowed errors in the Swarm Social logs
-   - Fix the HTTP method handling issues in the client application
+3. **Enhance Monitoring and Alerting**:
+   - Implement a more robust monitoring solution for the feed generator service
+   - Set up alerts for service outages or errors
+   - Create a dashboard for monitoring service health and performance
 
-3. **Implement Real Feed Algorithms**:
-   - Replace the placeholder feed data with real algorithms for the Swarm community and trending feeds
-   - Implement data collection and processing for feed generation
+4. **Improve Error Handling**:
+   - Enhance error handling in the feed generator service
+   - Implement graceful degradation for non-critical components
+   - Add more detailed logging for troubleshooting
 
-4. **Add Monitoring and Analytics**:
-   - Implement logging for feed requests to understand usage patterns
-   - Add analytics to track feed performance and user engagement
+5. **Documentation and Knowledge Transfer**:
+   - Update all documentation with the latest changes and configurations
+   - Create a troubleshooting guide for common issues
+   - Document the deployment process and configuration in detail
 
-5. **Enhance Error Handling**:
-   - Improve error handling for edge cases in feed generation
-   - Add more detailed error responses for debugging
+6. **Performance Optimization**:
+   - Analyze the performance of the feed generator service
+   - Identify bottlenecks and optimize critical paths
+   - Implement caching strategies for frequently accessed data
 
-6. **Optimize Performance**:
-   - Implement caching for frequently requested feeds
-   - Optimize database queries for feed generation
-
-7. **Add Testing**:
-   - Implement unit tests for feed algorithms
-   - Add integration tests for the XRPC endpoints
-
-8. **Documentation**:
-   - Create user documentation for the feed generator
-   - Document the feed algorithms and how they work
+7. **Feature Enhancements**:
+   - Develop additional feed algorithms based on user feedback
+   - Implement personalization features for feeds
+   - Explore integration with other Bluesky features and APIs
