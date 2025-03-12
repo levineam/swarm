@@ -6,109 +6,83 @@ This implementation plan outlines a step-by-step approach for properly setting u
 
 ## Current Status
 
-- The feed generator service is deployed to Render.com at https://swarm-feed-generator.onrender.com
+- The feed generator service is deployed on Render.com at https://swarm-feed-generator.onrender.com
 - The feed generator record has been updated with the correct production DID (`did:web:swarm-feed-generator.onrender.com`)
-- The service is deployed and the health endpoint is responding with "OK"
+- The health endpoint is responding with "OK"
 - The DID document is being served correctly at `/.well-known/did.json`
-- We've identified the issue with the XRPC endpoint registration: the endpoints are being registered correctly in the code, but there might be an issue with how the XRPC server is being created or how the routes are being registered
+- The XRPC endpoint registration issue has been identified and we're working on a fix
 
-## Phase 1: Fix XRPC Endpoint Registration Issue
+## Problem Identified
 
-### Problem
+We've identified that the XRPC endpoints (`app.bsky.feed.getFeedSkeleton` and `app.bsky.feed.describeFeedGenerator`) are not being registered correctly. Our diagnostic tests show that while the service is running and the health endpoint is accessible, the XRPC endpoints are returning 404 errors.
 
-The XRPC endpoints (`app.bsky.feed.getFeedSkeleton` and `app.bsky.feed.describeFeedGenerator`) are not being registered correctly. The code is correct, but the endpoints are not accessible.
+We've added detailed logging to the following files:
+- `feed-generation.ts` - To log the registration of the `getFeedSkeleton` endpoint
+- `describe-generator.ts` - To log the registration of the `describeFeedGenerator` endpoint
+- `server.ts` - To log the creation and initialization of the XRPC server
 
-### Proposed Solution
+We've also created a test script (`testXrpcEndpoints.js`) to verify the functionality of the XRPC endpoints.
 
-1. Add more logging to the server.ts, feed-generation.ts, and describe-generator.ts files to help diagnose the issue
-2. Create a test script to check the XRPC server configuration and endpoints
-3. Rebuild and redeploy the service with the updated code
-4. Check the logs on Render.com for any errors during startup
+## Implementation Plan
 
-### Tasks
+### Phase 1: Fix XRPC Endpoint Registration (In Progress)
 
-1. ✅ Update server.ts to add more logging and ensure that the XRPC server is being properly initialized
-2. ✅ Update feed-generation.ts to add more logging and ensure that the endpoint is being registered correctly
-3. ✅ Update describe-generator.ts to add more logging and ensure that the endpoint is being registered correctly
-4. ✅ Create a test script to check the XRPC server configuration and endpoints
-5. Rebuild and redeploy the service with the updated code
-6. Check the logs on Render.com for any errors during startup
-7. Test the XRPC endpoints using the test script
+1. ✅ Add detailed logging to the feed generator code to diagnose the issue
+2. ✅ Create a test script to verify XRPC endpoint functionality
+3. ⬜ Rebuild and redeploy the service with the added logging
+4. ⬜ Check the logs for any errors during XRPC server initialization
+5. ⬜ Fix any issues identified in the logs
+6. ⬜ Verify that the XRPC endpoints are now accessible
 
-## Phase 2: Test Feed Generator Functionality
+### Phase 2: Update the Swarm App to Use the Feed Generator
 
-Once the XRPC endpoint is working, we'll need to test the feed generator functionality to make sure it's returning the expected results.
+1. ⬜ Update the Swarm app to use the feed generator
+2. ⬜ Test the feed generator in the Swarm app
+3. ⬜ Fix any issues that arise during testing
 
-### Tasks
+### Phase 3: Implement the Swarm Community Feed Algorithm
 
-1. Test the feed generator with a valid feed URI
-2. Verify that the feed generator is returning the expected results
-3. Test the feed generator with an invalid feed URI to ensure it returns the expected error
+1. ⬜ Implement the algorithm to fetch posts from Swarm community members
+2. ⬜ Test the algorithm with sample data
+3. ⬜ Deploy the updated feed generator
 
-## Phase 3: Integrate with Swarm App
+### Phase 4: Implement the Swarm Trending Feed Algorithm
 
-Once the feed generator is working correctly, we'll need to integrate it with the Swarm app.
+1. ⬜ Implement the algorithm to fetch trending posts from the Swarm community
+2. ⬜ Test the algorithm with sample data
+3. ⬜ Deploy the updated feed generator
 
-### Tasks
+## Execution Plan for Phase 1
 
-1. Update the Swarm app to use the feed generator
-2. Test the integration to make sure it's working correctly
-3. Deploy the updated Swarm app
+1. We've added detailed logging to the feed generator code to help diagnose the issue with XRPC endpoint registration.
+2. We've created a test script (`testXrpcEndpoints.js`) to verify the functionality of the XRPC endpoints.
+3. Next, we'll commit and push these changes to the repository.
+4. After the service is redeployed, we'll check the logs for any errors during XRPC server initialization.
+5. Based on the logs, we'll identify and fix any issues with the XRPC server initialization or endpoint registration.
+6. We'll run the test script again to verify that the XRPC endpoints are now accessible.
 
-## Phase 4: Add More Community Members
+## Potential Issues and Solutions
 
-Once the feed generator is working correctly and integrated with the Swarm app, we'll need to add more community members to the feed.
+1. **Issue**: The XRPC server is not being initialized correctly.
+   **Solution**: Check the logs for any errors during XRPC server initialization and fix the issues.
 
-### Tasks
+2. **Issue**: The XRPC endpoints are not being registered correctly.
+   **Solution**: Check the logs for any errors during endpoint registration and fix the issues.
 
-1. Identify community members to add to the feed
-2. Update the `SWARM_COMMUNITY_MEMBERS` array in `swarm-community-members.ts`
-3. Redeploy the feed generator with the updated community members
+3. **Issue**: The XRPC router is not being mounted correctly.
+   **Solution**: Check the logs for any errors during router mounting and fix the issues.
 
-## Phase 5: Monitor and Maintain
+4. **Issue**: The lexicon files are not being loaded correctly.
+   **Solution**: Check the lexicon files and ensure they are being loaded correctly.
 
-Once the feed generator is working correctly and integrated with the Swarm app, we'll need to monitor and maintain it.
-
-### Tasks
-
-1. Set up monitoring for the feed generator
-2. Set up alerts for any issues
-3. Regularly check the feed generator to make sure it's working correctly
-
-## Potential Issues
-
-- The feed generator might not be able to handle a large number of community members
-- The feed generator might not be able to handle a large number of posts
-- The feed generator might not be able to handle a large number of requests
-
-## Next Steps After XRPC Endpoint Issue is Resolved
-
-### Phase 1: Feed Generator Integration with Swarm App
-
-1. Update the Swarm app to use the custom feed generator
-2. Test the feed generator in the Swarm app
-3. Implement any necessary changes to the feed generator based on testing
-
-### Phase 2: Feed Algorithm Refinement
-
-1. Refine the feed algorithms based on user feedback
-2. Implement additional feed algorithms as needed
-3. Test and deploy the updated feed algorithms
-
-### Phase 3: Monitoring and Maintenance
-
-1. Set up monitoring for the feed generator service
-2. Implement error handling and recovery mechanisms
-3. Document the feed generator service and its APIs
-
-## Execution Plan
+## Next Steps
 
 1. Commit and push the changes to the repository
-2. Wait for the deployment to complete on Render.com
-3. Check the logs on Render.com for any errors during startup
-4. Run the test script to check the XRPC endpoints
-5. If the XRPC endpoints are working, update the Swarm app to use the custom feed generator
-6. If the XRPC endpoints are still not working, continue debugging based on the logs and test results
+2. Wait for the service to be redeployed
+3. Check the logs for any errors
+4. Run the test script to verify XRPC endpoint functionality
+5. Fix any issues identified in the logs
+6. Update the Swarm app to use the feed generator once the XRPC endpoints are working
 
 ## Detailed Implementation Steps
 
