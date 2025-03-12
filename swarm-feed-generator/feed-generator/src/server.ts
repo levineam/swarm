@@ -43,6 +43,7 @@ export class FeedGenerator {
       didCache,
     })
 
+    console.log('Creating XRPC server...')
     const server = createServer({
       validateResponse: true,
       payload: {
@@ -51,6 +52,8 @@ export class FeedGenerator {
         blobLimit: 5 * 1024 * 1024, // 5mb
       },
     })
+    console.log('XRPC server created successfully.')
+
     const ctx: AppContext = {
       db,
       didResolver,
@@ -123,6 +126,7 @@ export class FeedGenerator {
           NODE_ENV: process.env.NODE_ENV,
           PORT: process.env.PORT,
           FEEDGEN_HOSTNAME: process.env.FEEDGEN_HOSTNAME,
+          FEEDGEN_LISTENHOST: process.env.FEEDGEN_LISTENHOST,
           FEEDGEN_PUBLISHER_DID: process.env.FEEDGEN_PUBLISHER_DID,
           FEEDGEN_SERVICE_DID: process.env.FEEDGEN_SERVICE_DID,
         },
@@ -147,15 +151,65 @@ export class FeedGenerator {
           didJsonExists: fs.existsSync(
             path.join(__dirname, '../public/.well-known/did.json'),
           ),
+          alternateDidJsonExists: fs.existsSync(
+            path.join(__dirname, '../did.json'),
+          ),
+        },
+        didDocument: {
+          '@context': [
+            'https://www.w3.org/ns/did/v1',
+            'https://w3id.org/security/suites/secp256k1-2019/v1',
+          ],
+          id: cfg.serviceDid,
+          verificationMethod: [
+            {
+              id: `${cfg.serviceDid}#atproto`,
+              type: 'EcdsaSecp256k1VerificationKey2019',
+              controller: cfg.serviceDid,
+              publicKeyMultibase:
+                'zQ3shojKAGY2sK3ThMHW7soP4tYDWLCRjJt9w14XKxkKZnnnK',
+            },
+          ],
+          service: [
+            {
+              id: '#atproto_pds',
+              type: 'AtprotoPersonalDataServer',
+              serviceEndpoint: 'https://bsky.social',
+            },
+            {
+              id: '#atproto_feed_generator',
+              type: 'AtprotoFeedGenerator',
+              serviceEndpoint: `https://${cfg.hostname}`,
+            },
+          ],
         },
       }
 
       res.json(debugInfo)
     })
 
+    // Add a health endpoint
+    app.get('/health', (req, res) => {
+      res.send('OK')
+    })
+
+    // Add a test endpoint to check if the XRPC router is working
+    app.get('/xrpc-test', (req, res) => {
+      res.json({ message: 'XRPC router is working' })
+    })
+
+    console.log('Registering feed generation endpoint...')
     feedGeneration(server, ctx)
+    console.log('Feed generation endpoint registered.')
+
+    console.log('Registering describe generator endpoint...')
     describeGenerator(server, ctx)
+    console.log('Describe generator endpoint registered.')
+
+    console.log('Adding XRPC router to Express app...')
     app.use(server.xrpc.router)
+    console.log('XRPC router added to Express app.')
+
     app.use(wellKnown(ctx))
 
     return new FeedGenerator(app, db, firehose, cfg)
