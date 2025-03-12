@@ -9,7 +9,7 @@
   "scripts": {
     "publishFeed": "ts-node scripts/publishFeedGen.ts",
     "unpublishFeed": "ts-node scripts/unpublishFeedGen.ts",
-    "start": "node scripts/ensure-did-document.js && node scripts/check-render-deployment.js && ts-node src/index.ts",
+    "start": "node scripts/ensure-did-document.js && node scripts/check-render-deployment.js && node scripts/modify-server-on-startup.js && ts-node src/index.ts",
     "build": "tsc",
     "postbuild": "node scripts/copy-did-document.js && node scripts/ensure-did-document.js && node scripts/add-xrpc-endpoints.js",
     "check-deployment": "node scripts/check-render-deployment.js"
