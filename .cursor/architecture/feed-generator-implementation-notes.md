@@ -15,7 +15,25 @@ The feed generator is built using Node.js and Express, and it uses the AT Protoc
 - The feed generator record has been updated with the correct production DID (`did:web:swarm-feed-generator.onrender.com`)
 - The health endpoint is responding with "OK"
 - The DID document is being served correctly at `/.well-known/did.json`
-- The XRPC endpoints (`app.bsky.feed.getFeedSkeleton` and `app.bsky.feed.describeFeedGenerator`) are not being registered correctly
+- The XRPC endpoints (`app.bsky.feed.getFeedSkeleton` and `app.bsky.feed.describeFeedGenerator`) are now working correctly
+- A runtime modification script has been implemented to ensure XRPC endpoints are always available
+- A root path handler has been added to provide a user-friendly landing page with information about the available feeds and endpoints
+
+## Service Architecture
+
+The Swarm platform consists of two separate services:
+
+1. **Swarm Social (Client Application)**: Deployed at https://swarm-social.onrender.com
+   - A customized fork of the Bluesky web client (bskyweb)
+   - Provides the user interface for interacting with the Swarm community
+   - Integrates with the feed generator to display custom feeds
+
+2. **Swarm Feed Generator**: Deployed at https://swarm-feed-generator.onrender.com
+   - Implements the AT Protocol feed generator specification
+   - Provides custom feeds for the Swarm community
+   - Exposes XRPC endpoints for integration with Bluesky clients
+
+These services work together to provide a complete community platform experience, with the client application handling the user interface and the feed generator providing the custom feed content.
 
 ## XRPC Endpoint Registration Issue
 
@@ -533,22 +551,28 @@ DATABASE_URL=sqlite:swarm-feed.db
 
 # Production (Render.com)
 PORT=3000
-FEEDGEN_HOSTNAME=swarm-social.onrender.com
+FEEDGEN_HOSTNAME=swarm-feed-generator.onrender.com
 FEEDGEN_LISTENHOST=0.0.0.0
 FEEDGEN_PUBLISHER_DID=did:plc:ouadmsyvsfcpkxg3yyz4trqi
 FEEDGEN_LABELS_ENABLED=false
-FEEDGEN_SERVICE_DID=did:web:swarm-social.onrender.com
+FEEDGEN_SERVICE_DID=did:web:swarm-feed-generator.onrender.com
 FEEDGEN_SUBSCRIPTION_ENDPOINT=wss://bsky.network
 DATABASE_URL=sqlite:swarm-feed.db
 ```
 
 ### Important URLs
 
-- Feed Generator Endpoint: `https://swarm-social.onrender.com`
-- DID Document URL: `https://swarm-social.onrender.com/.well-known/did.json`
-- Alternative DID Document URL: `https://swarm-social.onrender.com/did.json`
-- Debug Info: `https://swarm-social.onrender.com/debug`
-- Health Check: `https://swarm-social.onrender.com/health`
+#### Swarm Social (Client Application)
+- Main Application: `https://swarm-social.onrender.com`
+
+#### Swarm Feed Generator
+- Feed Generator Service: `https://swarm-feed-generator.onrender.com`
+- Root Path (Landing Page): `https://swarm-feed-generator.onrender.com/`
+- DID Document URL: `https://swarm-feed-generator.onrender.com/.well-known/did.json`
+- Alternative DID Document URL: `https://swarm-feed-generator.onrender.com/did.json`
+- Debug Info: `https://swarm-feed-generator.onrender.com/debug`
+- Health Check: `https://swarm-feed-generator.onrender.com/health`
+- XRPC Test Endpoint: `https://swarm-feed-generator.onrender.com/xrpc-test`
 - Feed URI: `at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.generator/swarm-community`
 
 ### Key Files
@@ -564,3 +588,57 @@ DATABASE_URL=sqlite:swarm-feed.db
 - `.well-known/did.json`: Source DID document
 - `public/.well-known/did.json`: Public DID document that gets served
 - `public/did.json`: Static fallback DID document 
+
+### Runtime Modification Solution
+
+To ensure the XRPC endpoints are always available, we implemented a runtime modification approach:
+
+1. **Created a Runtime Modification Script**: 
+   - Implemented `modify-server-on-startup.js` that runs at server startup
+   - The script checks if the server.js file exists in the dist directory
+   - It reads the server.js file and checks if the XRPC endpoints are already included
+   - If not, it adds the XRPC endpoints after the debug endpoint
+
+2. **Updated Start Command**:
+   - Modified the `package.json` start script to run the modification script before starting the server:
+   ```json
+   "start": "node scripts/ensure-did-document.js && node scripts/check-render-deployment.js && node scripts/modify-server-on-startup.js && ts-node src/index.ts"
+   ```
+
+This approach ensures that the XRPC endpoints are always available, even if there are issues with the TypeScript compilation or the build process. 
+
+## Next Steps
+
+Now that the feed generator is fully operational with working XRPC endpoints and a user-friendly landing page, we can focus on enhancing its functionality:
+
+1. **Resolve Hostname/URL Discrepancy**:
+   - Update the technical architecture document to reflect the current deployment setup with two separate services
+   - Ensure consistent references to the correct hostnames throughout the documentation and code
+
+2. **Investigate 405 Errors in Swarm Social**:
+   - Analyze the 405 Method Not Allowed errors in the Swarm Social logs
+   - Fix the HTTP method handling issues in the client application
+
+3. **Implement Real Feed Algorithms**:
+   - Replace the placeholder feed data with real algorithms for the Swarm community and trending feeds
+   - Implement data collection and processing for feed generation
+
+4. **Add Monitoring and Analytics**:
+   - Implement logging for feed requests to understand usage patterns
+   - Add analytics to track feed performance and user engagement
+
+5. **Enhance Error Handling**:
+   - Improve error handling for edge cases in feed generation
+   - Add more detailed error responses for debugging
+
+6. **Optimize Performance**:
+   - Implement caching for frequently requested feeds
+   - Optimize database queries for feed generation
+
+7. **Add Testing**:
+   - Implement unit tests for feed algorithms
+   - Add integration tests for the XRPC endpoints
+
+8. **Documentation**:
+   - Create user documentation for the feed generator
+   - Document the feed algorithms and how they work
