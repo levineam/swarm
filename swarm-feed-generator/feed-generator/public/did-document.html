@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DID Document</title>
+    <meta charset="utf-8">
+    <script>
+        // This script will redirect to the .well-known/did.json file
+        window.location.href = '/.well-known/did.json';
+    </script>
+</head>
+<body>
+    <h1>DID Document</h1>
+    <p>If you are not redirected automatically, please click <a href="/.well-known/did.json">here</a> to access the DID document.</p>
+    <pre id="didDocument"></pre>
+    <script>
+        // As a fallback, we'll also embed the DID document directly in this page
+        const didDocument = {
+            "@context": [
+                "https://www.w3.org/ns/did/v1",
+                "https://w3id.org/security/suites/secp256k1-2019/v1"
+            ],
+            "id": "did:web:swarm-social.onrender.com",
+            "verificationMethod": [
+                {
+                    "id": "did:web:swarm-social.onrender.com#atproto",
+                    "type": "EcdsaSecp256k1VerificationKey2019",
+                    "controller": "did:web:swarm-social.onrender.com",
+                    "publicKeyMultibase": "zQ3shojKAGY2sK3ThMHW7soP4tYDWLCRjJt9w14XKxkKZnnnK"
+                }
+            ],
+            "service": [
+                {
+                    "id": "#atproto_pds",
+                    "type": "AtprotoPersonalDataServer",
+                    "serviceEndpoint": "https://bsky.social"
+                },
+                {
+                    "id": "#atproto_feed_generator",
+                    "type": "AtprotoFeedGenerator",
+                    "serviceEndpoint": "https://swarm-social.onrender.com"
+                }
+            ]
+        };
+        
+        document.getElementById('didDocument').textContent = JSON.stringify(didDocument, null, 2);
+        
+        // Also make the DID document available at the correct path
+        fetch('/.well-known/did.json')
+            .then(response => {
+                if (!response.ok) {
+                    // If the DID document is not available, create it
+                    return fetch('/.well-known/did.json', {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(didDocument)
+                    });
+                }
+                return response;
+            })
+            .catch(error => {
+                console.error('Error accessing DID document:', error);
+            });
+    </script>
+</body>
+</html> 

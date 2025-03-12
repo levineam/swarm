@@ -1,6 +1,4 @@
 import dotenv from 'dotenv'
-
-import { startDidServer } from './did-server'
 import { FeedGenerator } from './server'
 
 // load .env before doing anything else
@@ -14,9 +12,6 @@ const run = async () => {
   console.log('- FEEDGEN_HOSTNAME:', process.env.FEEDGEN_HOSTNAME)
   console.log('- FEEDGEN_PUBLISHER_DID:', process.env.FEEDGEN_PUBLISHER_DID)
   console.log('- FEEDGEN_SERVICE_DID:', process.env.FEEDGEN_SERVICE_DID)
-
-  // Start the DID document server
-  startDidServer()
 
   // Create the feed generator
   const feedGenerator = FeedGenerator.create({

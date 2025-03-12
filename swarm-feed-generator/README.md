@@ -1,83 +1,146 @@
-# Swarm Community Feed Generator
+# Swarm Feed Generator
 
-A custom feed generator for the Swarm community on the AT Protocol. This feed generator filters posts from Swarm community members and makes them available via a custom feed URI.
+A custom feed generator for the Swarm social app that integrates with the AT Protocol and Bluesky.
 
 ## Overview
 
-The Swarm Community Feed Generator is built on top of the Bluesky feed generator template. It provides a specialized feed that shows posts from members of the Swarm community, making it easier for users to stay connected with community content.
+This feed generator creates a "Swarm Community" feed that displays posts from members of the Swarm community. It connects to the Bluesky firehose to receive real-time updates and filters posts based on a list of DIDs defined in the `swarm-community-members.ts` file.
 
 ## Features
 
-- **Community-focused**: Shows posts only from Swarm community members
-- **Real-time updates**: Subscribes to the AT Protocol firehose to get real-time post updates
-- **Customizable**: Easy to update the list of community members
-- **AT Protocol compliant**: Follows all standards for feed generators
+- Custom feed algorithm for Swarm community members
+- Real-time updates via Bluesky firehose subscription
+- Configurable via environment variables
+- SQLite database for storing post data
 
-## Directory Structure
+## Prerequisites
 
-- `feed-generator/`: The main feed generator code
-  - `src/`: Source code
-    - `algos/`: Feed algorithms
-      - `swarm-community.ts`: The Swarm community feed algorithm
-    - `swarm-community-members.ts`: List of Swarm community member DIDs
-  - `scripts/`: Utility scripts
-    - `publishSwarmFeed.ts`: Script to publish the feed generator to Bluesky
+- Node.js (v16 or higher)
+- npm or yarn
+- A Bluesky account with a registered DID
 
-## Setup and Installation
+## Installation
 
-1. **Clone the repository**
+1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/swarm-feed-generator.git
-   cd swarm-feed-generator/feed-generator
+   git clone https://github.com/yourusername/swarm-social-app.git
+   cd swarm-social-app/swarm-feed-generator
    ```
 
-2. **Install dependencies**
+2. Install dependencies:
    ```bash
    npm install
    ```
 
-3. **Configure environment variables**
-   - Copy `.env.example` to `.env`
-   - Update the values in `.env` with your configuration
-
-4. **Start the feed generator**
+3. Copy the example environment file:
    ```bash
-   npm start
+   cp .env.example .env
    ```
 
-## Publishing the Feed Generator
-
-To publish the feed generator to Bluesky:
-
-1. **Update your `.env` file**
-   - Set `FEEDGEN_PUBLISHER_DID` to your Bluesky DID
-   - Set `FEEDGEN_SERVICE_DID` to your service DID
-   - Add your Bluesky credentials:
-     ```
-     BLUESKY_USERNAME=your-username.bsky.social
-     BLUESKY_PASSWORD=your-app-password
-     ```
-
-2. **Run the publish script**
-   ```bash
-   npx ts-node scripts/publishSwarmFeed.ts
+4. Update the `.env` file with your configuration:
+   ```
+   PORT=3000
+   FEEDGEN_HOSTNAME=localhost:3000
+   FEEDGEN_PUBLISHER_DID=your-did
+   FEEDGEN_LABELS_ENABLED=false
+   FEEDGEN_SERVICE_DID=your-did
+   FEEDGEN_SUBSCRIPTION_ENDPOINT=wss://bsky.network
+   DATABASE_URL=sqlite:swarm-feed.db
+   
+   # Bluesky credentials
+   BLUESKY_USERNAME=your-handle.bsky.social
+   BLUESKY_PASSWORD=your-password
    ```
 
-3. **Verify the feed**
-   - The feed URI will be: `at://{YOUR_DID}/app.bsky.feed.generator/swarm-community`
-   - You can view it in the Bluesky app by navigating to the custom feeds section
+5. Generate a Bluesky access token:
+   ```bash
+   node get-bluesky-token.js
+   ```
 
-## Adding Community Members
+## Usage
 
-To add or update the list of Swarm community members:
+### Starting the Feed Generator
 
-1. Open `src/swarm-community-members.ts`
-2. Update the `SWARM_COMMUNITY_MEMBERS` array with the DIDs of community members
-3. Restart the feed generator
+```bash
+npm start
+```
+
+The feed generator will be available at `http://localhost:3000`.
+
+### Endpoints
+
+- `GET /xrpc/app.bsky.feed.describeFeedGenerator`: Returns information about the available feeds
+- `GET /xrpc/app.bsky.feed.getFeedSkeleton`: Returns a feed skeleton for the requested feed
+
+### Adding Community Members
+
+To add members to the Swarm community, edit the `src/swarm-community-members.ts` file:
+
+```typescript
+export const SWARM_COMMUNITY_MEMBERS: string[] = [
+  "did:plc:ouadmsyvsfcpkxg3yyz4trqi",  // andrarchy.bsky.social
+  // Add more DIDs here
+];
+```
+
+## Deployment
+
+### Deploying to Render
+
+1. Create a new Web Service on Render
+2. Connect your GitHub repository
+3. Configure the service:
+   - Name: `swarm-social`
+   - Environment: `Node`
+   - Build Command: `cd swarm-feed-generator && npm install`
+   - Start Command: `cd swarm-feed-generator && npm start`
+   - Add environment variables from your `.env` file
+
+4. Click "Create Web Service"
+
+## Maintenance
+
+### Updating the Bluesky Access Token
+
+The Bluesky access token expires after a few hours. To generate a new token:
+
+```bash
+node get-bluesky-token.js
+```
+
+This will update the `.env` file with a new token. After updating, restart the feed generator service.
+
+### Monitoring
+
+Monitor the feed generator logs for any errors or issues. Common issues include:
+
+- Expired access token
+- Connection issues with the Bluesky firehose
+- Database errors
+
+## Troubleshooting
+
+### Feed Not Showing Posts
+
+1. Check that the DIDs in the `SWARM_COMMUNITY_MEMBERS` array are correct
+2. Verify that the feed generator is connected to the Bluesky firehose
+3. Check the logs for any errors
+
+### 502 Bad Gateway Error
+
+1. Ensure the feed generator service is running
+2. Check that the service is accessible at the configured URL
+3. Verify that the DID document has the correct service endpoint
+
+### Invalid Feed Generator Service Details
+
+1. Check the DID document at `https://plc.directory/your-did`
+2. Ensure the service endpoint is correctly configured
+3. Verify that the algorithm record exists
 
 ## License
 
-MIT
+[MIT License](LICENSE)
 
 ## Contributing
 
