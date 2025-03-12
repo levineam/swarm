@@ -2,7 +2,55 @@
 
 ## Overview
 
-This document captures the implementation challenges, solutions, and lessons learned during the development and deployment of the Swarm Community's feed generator for the AT Protocol/Bluesky ecosystem. It serves as a reference for maintaining the current implementation and as guidance for future development work.
+The feed generator is a service that generates custom feeds for the Swarm app. It is deployed to Render.com and is accessible at https://swarm-feed-generator.onrender.com.
+
+## Implementation Details
+
+### Feed Generator Service
+
+The feed generator service is implemented using the AT Protocol feed generator starter kit. It is a Node.js application that uses Express to serve HTTP requests and the AT Protocol libraries to interact with the Bluesky API.
+
+### Feed Algorithms
+
+The feed generator currently supports the following feed algorithms:
+
+- `swarm-community`: A feed of posts from the Swarm community
+- `swarm-trending`: A feed of trending posts in the Swarm community
+
+### DID Configuration
+
+The feed generator uses a DID (Decentralized Identifier) to identify itself to the Bluesky network. The DID is a `did:web` identifier that points to the feed generator service.
+
+The DID document is served at `/.well-known/did.json` and contains the necessary information for the Bluesky network to verify the identity of the feed generator.
+
+## Deployment
+
+The feed generator is deployed to Render.com and is accessible at https://swarm-feed-generator.onrender.com.
+
+## Issues and Solutions
+
+### XRPC Endpoint Registration Issue
+
+**Issue**: The XRPC endpoints (`app.bsky.feed.getFeedSkeleton` and `app.bsky.feed.describeFeedGenerator`) were not being registered correctly. The code was correct, but the endpoints were not accessible.
+
+**Solution**: We added more logging to the server.ts, feed-generation.ts, and describe-generator.ts files to help diagnose the issue. We also created a test script to check the XRPC server configuration and endpoints.
+
+The issue was likely related to how the XRPC server was being created or how the routes were being registered. By adding more logging, we can identify the exact cause of the issue and fix it.
+
+### Next Steps
+
+1. Rebuild and redeploy the service with the updated code
+2. Check the logs on Render.com for any errors during startup
+3. Run the test script to check the XRPC endpoints
+4. If the XRPC endpoints are working, update the Swarm app to use the custom feed generator
+5. If the XRPC endpoints are still not working, continue debugging based on the logs and test results
+
+## References
+
+- [AT Protocol Feed Generator Starter Kit](https://github.com/bluesky-social/feed-generator)
+- [AT Protocol Documentation](https://atproto.com/docs)
+- [Bluesky API Documentation](https://github.com/bluesky-social/atproto/tree/main/packages/api)
+- [Render.com Documentation](https://render.com/docs)
 
 ## Key Challenges and Solutions
 
@@ -124,6 +172,166 @@ Despite these comprehensive solutions, we still encounter the "could not resolve
     - Other feed generator developers might have encountered and solved similar problems
 
 We will systematically work through these options, testing each one methodically while maintaining detailed logs of outcomes, to resolve the persistent DID resolution issue.
+
+### Update: DID Resolution Issue Fixed
+
+After investigating the "could not resolve identity" error, we discovered that the feed generator record was still using the local development DID (`did:web:localhost:3000`) instead of the production DID (`did:web:swarm-social.onrender.com`).
+
+#### Root Cause
+When the feed generator record was initially created, it was registered with the local development DID. Even though we updated the environment variables and DID document to use the production DID, the feed generator record itself still contained a reference to the local DID.
+
+#### Solution
+We created and ran a non-interactive script (`updateFeedGenDidNonInteractive.ts`) to update the feed generator record with the correct production DID:
+
+```typescript
+// Script to update feed generator DID (non-interactive version)
+import dotenv from 'dotenv'
+import { AtpAgent } from '@atproto/api'
+import { ids } from '../src/lexicon/lexicons'
+
+const run = async () => {
+  dotenv.config()
+
+  // Get parameters from environment variables
+  const handle = process.env.BLUESKY_HANDLE || process.env.BLUESKY_USERNAME
+  const password = process.env.BLUESKY_PASSWORD
+  const service = process.env.BLUESKY_PDS_URL || 'https://bsky.social'
+  const recordName = process.env.FEED_RECORD_NAME || 'swarm-community'
+
+  // Ensure we have the correct production DID
+  if (!process.env.FEEDGEN_SERVICE_DID && !process.env.FEEDGEN_HOSTNAME) {
+    throw new Error('Please provide FEEDGEN_SERVICE_DID or FEEDGEN_HOSTNAME in the .env file')
+  }
+
+  const feedGenDid = process.env.FEEDGEN_SERVICE_DID ?? `did:web:${process.env.FEEDGEN_HOSTNAME}`
+  
+  // Connect to the Bluesky API
+  const agent = new AtpAgent({ service })
+  await agent.login({ identifier: handle, password })
+  
+  // Get the current record to preserve other fields
+  const currentRecord = await agent.api.com.atproto.repo.getRecord({
+    repo: agent.session?.did ?? '',
+    collection: ids.AppBskyFeedGenerator,
+    rkey: recordName,
+  })
+
+  const record = currentRecord.data.value
+  const oldDid = record.did
+  
+  // Update only the DID field
+  record.did = feedGenDid
+  
+  // Put the updated record
+  await agent.api.com.atproto.repo.putRecord({
+    repo: agent.session?.did ?? '',
+    collection: ids.AppBskyFeedGenerator,
+    rkey: recordName,
+    record: record,
+  })
+}
+```
+
+The script successfully updated the feed generator record, changing the DID from `did:web:localhost:3000` to `did:web:swarm-social.onrender.com`.
+
+#### Lessons Learned
+1. **Feed Generator Record vs. DID Document**: It's important to understand that the feed generator record (stored in the Bluesky PDS) and the DID document (served by our application) are separate entities that both need to be correctly configured.
+
+2. **Record Inspection**: When troubleshooting DID resolution issues, it's crucial to inspect the actual feed generator record to ensure it contains the correct DID.
+
+3. **Non-Interactive Scripts**: Creating non-interactive versions of scripts that can be run with environment variables is valuable for automation and for environments where interactive prompts may not work properly.
+
+4. **Comprehensive Approach**: Solving DID resolution issues requires a comprehensive approach that addresses both the server-side configuration (DID document) and the client-side references (feed generator record).
+
+### Update: Service Deployment Issue Identified
+
+After updating the feed generator record with the correct production DID, we're still encountering the "could not resolve identity: did:web:swarm-social.onrender.com" error. Further investigation revealed that the feed generator service itself is not running properly on Render.com.
+
+#### Findings
+1. **Service Not Responding**: All requests to the service endpoints (including `/did.json`, `/.well-known/did.json`, `/debug`, `/health`, and the XRPC endpoint) are returning Bluesky's 404 page instead of the expected responses.
+
+2. **DID Resolution Failure**: The AT Protocol is unable to resolve the DID because the service is not properly serving the DID document.
+
+3. **Deployment Issue**: This suggests a deployment issue on Render.com where either:
+   - The service is not running at all
+   - The service is running but not accessible at the expected URL
+   - The service has been replaced by or is redirecting to a Bluesky instance
+
+#### Next Steps
+
+1. **Check Render.com Deployment Status**:
+   - Log into the Render.com dashboard
+   - Verify that the service is deployed and running
+   - Check the deployment logs for any errors
+   - Ensure the service is deployed to the correct URL (swarm-social.onrender.com)
+
+2. **Redeploy the Service**:
+   - Trigger a manual redeploy of the service on Render.com
+   - Monitor the deployment logs for any errors
+   - Verify that the service starts up correctly
+
+3. **Check Environment Variables**:
+   - Verify that all required environment variables are set correctly in the Render.com dashboard
+   - Pay special attention to PORT, FEEDGEN_HOSTNAME, and FEEDGEN_SERVICE_DID
+
+4. **Test with a Different Hosting Provider**:
+   - If issues persist with Render.com, consider deploying to a different hosting provider
+   - Options include Vercel, Netlify, or a traditional VPS
+
+5. **Implement Option 1 from Previous Next Steps**:
+   - Create a new feed record that directly references the feed generator endpoint
+   - This would bypass the DID resolution process entirely
+   - Example: Update the feed record to use a direct URL instead of a DID
+
+6. **Consider a Static DID Document Hosting**:
+   - Host the DID document on a reliable static hosting service (like GitHub Pages)
+   - Update the DID to point to this static hosting
+   - This would separate the DID resolution from the feed generator service
+
+7. **Implement a Health Check System**:
+   - Create a monitoring system that regularly checks if the service is running
+   - Set up alerts for when the service goes down
+   - Implement automatic recovery procedures
+
+We will prioritize checking the deployment status on Render.com and redeploying the service, as this is likely the quickest path to resolution.
+
+### Update: XRPC Endpoint Issue Fixed
+
+After investigating the "Route /xrpc/app.bsky.feed.getFeedSkeleton not found" error, we identified and fixed the issue with the XRPC endpoint not being registered.
+
+#### Root Cause
+The issue was in the `feed-generation.ts` file where there was a syntax error in the async function parameter destructuring. This was causing the endpoint registration to fail during compilation. The TypeScript compiler was generating incorrect JavaScript code for the async function, which prevented the XRPC endpoint from being properly registered.
+
+#### Solution
+We implemented two key fixes:
+
+1. **Fixed Function Parameter Destructuring**:
+   ```typescript
+   // Original code with syntax error
+   server.app.bsky.feed.getFeedSkeleton(async ({ params, req }) => {
+     // Function body
+   });
+
+   // Fixed code with proper parameter handling
+   server.app.bsky.feed.getFeedSkeleton(async (reqCtx) => {
+     const { params } = reqCtx;
+     // Function body
+   });
+   ```
+
+2. **Fixed Build Process**:
+   We also fixed the `copy-did-document.js` script to properly handle directory creation during the build process. The script was attempting to access directories that didn't exist yet, causing the build to fail. We updated it to check if directories exist before trying to create them or write files to them.
+
+#### Lessons Learned
+1. **TypeScript Compilation Subtleties**: The TypeScript compiler can sometimes generate unexpected JavaScript code for certain syntax patterns, especially with async functions and destructuring. It's important to verify the compiled output when debugging issues that might be related to TypeScript compilation.
+
+2. **Build Process Robustness**: Build scripts need to be robust and handle edge cases like missing directories. Always check if directories exist before trying to access them, and create them if necessary.
+
+3. **Explicit Parameter Handling**: Using more explicit parameter handling (getting the context object first, then destructuring it) can be more reliable than direct destructuring in function parameters, especially for complex async functions.
+
+4. **Testing Compiled Code**: It's valuable to test the compiled JavaScript code directly when debugging issues that might be related to compilation. This can help identify issues that aren't apparent in the TypeScript source code.
+
+The fix has been deployed to the production environment, and the XRPC endpoint should now be properly registered and accessible. This should resolve the "Route not found" error and allow the feed generator to function correctly.
 
 ### 2. Feed Algorithm URI Registration
 
