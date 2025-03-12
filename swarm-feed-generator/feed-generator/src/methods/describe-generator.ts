@@ -28,7 +28,7 @@ export default function describeGenerator(server: Server, ctx: AppContext) {
           'Server.app.bsky.feed object keys: ' +
             Object.keys(server.app.bsky.feed).join(', '),
         )
-        if (server.app.bsky.feed.describeFeedGenerator) {
+        if (typeof server.app.bsky.feed.describeFeedGenerator === 'function') {
           log('describeFeedGenerator endpoint exists on server.app.bsky.feed')
         } else {
           log(

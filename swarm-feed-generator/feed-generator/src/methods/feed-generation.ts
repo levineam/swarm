@@ -29,7 +29,7 @@ export default function feedGeneration(server: Server, ctx: AppContext) {
           'Server.app.bsky.feed object keys: ' +
             Object.keys(server.app.bsky.feed).join(', '),
         )
-        if (server.app.bsky.feed.getFeedSkeleton) {
+        if (typeof server.app.bsky.feed.getFeedSkeleton === 'function') {
           log('getFeedSkeleton endpoint exists on server.app.bsky.feed')
         } else {
           log(
