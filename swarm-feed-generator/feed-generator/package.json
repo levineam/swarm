@@ -14,7 +14,7 @@
     "postbuild": "node scripts/copy-did-document.js && node scripts/ensure-did-document.js"
   },
   "dependencies": {
-    "@atproto/api": "^0.13.28",
+    "@atproto/api": "^0.13.35",
     "@atproto/crypto": "^0.4.4",
     "@atproto/identity": "^0.2.1",
     "@atproto/lexicon": "^0.2.2",
@@ -32,7 +32,8 @@
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.11",
-    "@types/express": "^4.17.17",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
     "@types/node": "^20.1.2",
     "inquirer": "^12.0.1",
     "ts-node": "^10.9.1",
