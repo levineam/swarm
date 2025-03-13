@@ -138,8 +138,8 @@ export class FeedGenerator {
           },
         ],
         links: {
-          privacyPolicy: 'https://swarm-social.onrender.com/privacy',
-          termsOfService: 'https://swarm-social.onrender.com/terms',
+          privacyPolicy: 'https://swarm-feed-generator.onrender.com/privacy',
+          termsOfService: 'https://swarm-feed-generator.onrender.com/terms',
         },
       })
     })
@@ -307,7 +307,7 @@ export class FeedGenerator {
         </head>
         <body>
           <h1>Swarm Feed Generator</h1>
-          <p>This is the feed generator service for the <a href="https://swarm-social.onrender.com" target="_blank">Swarm</a> community platform on Bluesky.</p>
+          <p>This is the feed generator service for the <a href="https://swarm-feed-generator.onrender.com" target="_blank">Swarm</a> community platform on Bluesky.</p>
           
           <h2>Available Feeds</h2>
           <div class="feeds">
@@ -340,7 +340,7 @@ export class FeedGenerator {
           </ol>
           
           <h2>Integration</h2>
-          <p>This feed generator is integrated with the <a href="https://swarm-social.onrender.com" target="_blank">Swarm Social</a> platform, which provides a customized Bluesky experience with community features.</p>
+          <p>This feed generator is integrated with the <a href="https://swarm-feed-generator.onrender.com" target="_blank">Swarm Social</a> platform, which provides a customized Bluesky experience with community features.</p>
           
           <footer style="margin-top: 40px; border-top: 1px solid #eee; padding-top: 20px;">
             <p>© ${new Date().getFullYear()} Swarm Community Platform</p>

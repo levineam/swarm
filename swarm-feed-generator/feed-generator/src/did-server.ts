@@ -11,9 +11,10 @@ dotenv.config()
  * Creates and starts a standalone Express server for serving the DID document
  */
 export function startDidServer() {
-  const hostname = process.env.FEEDGEN_HOSTNAME || 'swarm-social.onrender.com'
-  const port = Number(process.env.PORT || 3000)
+  const port = process.env.PORT ? parseInt(process.env.PORT) : 3000
   const listenhost = process.env.FEEDGEN_LISTENHOST || '0.0.0.0'
+  const hostname =
+    process.env.FEEDGEN_HOSTNAME || 'swarm-feed-generator.onrender.com'
   const serviceDid = process.env.FEEDGEN_SERVICE_DID || `did:web:${hostname}`
 
   // Create a standalone Express app for serving the DID document
