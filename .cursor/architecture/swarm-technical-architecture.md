@@ -34,11 +34,14 @@ We've established the foundational infrastructure and are now ready to expand in
   - Database integration
   - AT Protocol firehose subscription
 - **Deployment Configuration**: Created configuration for Render deployment with HTTPS
-- **Public Deployment**: Deployed the feed generator on Render at https://swarm-social.onrender.com
+- **Public Deployment**: Deployed the feed generator on Render at https://swarm-feed-generator.onrender.com
 - **DID Document Configuration**: Successfully linked our server to the DID in the AT Protocol
 - **Algorithm Record Creation**: Registered our feed generator with URI at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.generator/swarm-community
 - **Client Integration**: Updated client application to use the new feed URI
 - **Testing Framework**: Created comprehensive testing documentation and procedures
+- **Landing Page**: Implemented a user-friendly landing page for the feed generator
+- **XRPC Endpoints**: Successfully implemented and tested all required XRPC endpoints
+- **DID Resolution**: Fixed issues with DID resolution by updating the service type and ID
 
 ### Implementation Challenges and Solutions
 For detailed notes on implementation challenges, solutions, and lessons learned during the feed generator development, refer to [Feed Generator Implementation Notes](./feed-generator-implementation-notes.md). This document captures the technical details and troubleshooting steps that were necessary to successfully deploy the feed generator in production.

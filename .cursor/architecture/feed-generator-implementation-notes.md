@@ -12,11 +12,10 @@ The feed generator is built using Node.js and Express, and it uses the AT Protoc
 ## Current Status
 
 - The feed generator service is deployed on Render.com at https://swarm-feed-generator.onrender.com
-- The feed generator record has been updated with the correct production DID (`did:web:swarm-feed-generator.onrender.com`)
-- The XRPC endpoints (`app.bsky.feed.getFeedSkeleton` and `app.bsky.feed.describeFeedGenerator`) have been implemented and were previously working correctly
-- A runtime modification script has been implemented to ensure XRPC endpoints are always available
-- A root path handler has been added to provide a user-friendly landing page with information about the available feeds and endpoints
-- **Current Issue (March 12, 2025)**: The service is currently returning a 502 Bad Gateway error for all endpoints. This is likely due to the service being in the process of deploying our latest changes or experiencing deployment issues. We need to check the Render dashboard for deployment logs and status.
+- The feed generator is fully operational with a user-friendly landing page that provides information about the available feeds and endpoints
+- All XRPC endpoints (`app.bsky.feed.getFeedSkeleton` and `app.bsky.feed.describeFeedGenerator`) are working correctly
+- The root path handler has been successfully implemented and is serving a well-designed landing page
+- **Update (March 15, 2025)**: We have successfully fixed the DID document issue by updating the service type to "BskyFeedGenerator" and the service ID to "#bsky_fg". The Swarm Social client application (https://swarm-social.onrender.com) is no longer showing the "invalid feed generator service details in did document" error.
 
 ## Service Architecture
 
@@ -362,7 +361,6 @@ After updating the feed generator record with the correct production DID, we're 
 5. **Implement Option 1 from Previous Next Steps**:
    - Create a new feed record that directly references the feed generator endpoint
    - This would bypass the DID resolution process entirely
-   - Example: Update the feed record to use a direct URL instead of a DID
 
 6. **Consider a Static DID Document Hosting**:
    - Host the DID document on a reliable static hosting service (like GitHub Pages)
@@ -608,38 +606,32 @@ This approach ensures that the XRPC endpoints are always available, even if ther
 
 ## Next Steps
 
-1. **Resolve 502 Bad Gateway Issue**:
-   - Check the Render dashboard for deployment logs and status
-   - Verify if the deployment is in progress or if there are any errors
-   - If necessary, trigger a manual redeployment
-   - Monitor the service until it returns to normal operation
+1. **Monitor DID Resolution**:
+   - Continue monitoring the DID resolution process to ensure it remains stable
+   - Set up automated checks to verify that the DID document is accessible and correctly formatted
+   - Create alerts for any issues with DID resolution
 
-2. **Verify Root Path Handler**:
-   - Once the service is back online, verify that the root path handler is working correctly
-   - Ensure the landing page displays properly with all the necessary information
-   - Test all links and endpoints mentioned on the landing page
+2. **Update Client Integration**:
+   - Investigate how the Swarm Social client is attempting to resolve the feed generator's DID
+   - Check if there are any cached or hardcoded values in the client that need to be updated
+   - Update the client configuration to use the correct feed URI and DID
 
-3. **Enhance Monitoring and Alerting**:
-   - Implement a more robust monitoring solution for the feed generator service
-   - Set up alerts for service outages or errors
-   - Create a dashboard for monitoring service health and performance
-
-4. **Improve Error Handling**:
-   - Enhance error handling in the feed generator service
+3. **Improve Error Handling and Resilience**:
+   - Implement more robust error handling throughout the feed generator
+   - Add circuit breakers and fallbacks for external dependencies
    - Implement graceful degradation for non-critical components
-   - Add more detailed logging for troubleshooting
 
-5. **Documentation and Knowledge Transfer**:
+4. **Performance Optimization**:
+   - Analyze the performance of the feed generator service
+   - Implement caching strategies for frequently accessed data
+   - Optimize database queries and indexing
+
+5. **User Experience Enhancements**:
+   - Add more detailed information to the landing page
+   - Implement a simple admin interface for managing feeds
+   - Create a dashboard for monitoring feed performance and usage
+
+6. **Documentation and Knowledge Transfer**:
    - Update all documentation with the latest changes and configurations
    - Create a troubleshooting guide for common issues
-   - Document the deployment process and configuration in detail
-
-6. **Performance Optimization**:
-   - Analyze the performance of the feed generator service
-   - Identify bottlenecks and optimize critical paths
-   - Implement caching strategies for frequently accessed data
-
-7. **Feature Enhancements**:
-   - Develop additional feed algorithms based on user feedback
-   - Implement personalization features for feeds
-   - Explore integration with other Bluesky features and APIs
+   - Document the DID resolution process and configuration in detail
