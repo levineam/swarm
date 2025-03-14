@@ -49,7 +49,8 @@ sleep 10
 # 3. Run the comprehensive health check
 node scripts/health-check.js
 
-# 4. If there are issues with the feed generator record, verify it
+# 4. CRITICAL: Verify the feed generator record in the Bluesky PDS
+# This step is crucial for resolving DID resolution issues
 node swarm-feed-generator/feed-generator/scripts/checkFeedRecord.js
 
 # 5. If the DID in the feed generator record is incorrect, update it
@@ -116,8 +117,9 @@ If you encounter DID resolution issues (e.g., "could not resolve identity: did:w
    - Verify that the DID document is being served correctly at `/.well-known/did.json`
    - Ensure the document has the correct service endpoint configuration
 
-2. **Check the feed generator record**:
+2. **Check the feed generator record** (CRITICAL):
    - Run the `checkFeedRecord.js` script to verify the DID in the feed generator record
+   - This is often the key step in resolving DID resolution issues
    - If incorrect, run the `updateFeedGenDid.js` script to update it
 
 3. **Force refresh the DID resolution**:
