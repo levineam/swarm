@@ -19,6 +19,7 @@ The feed generator is built using Node.js and Express, and it uses the AT Protoc
 - **Update (March 13, 2025)**: We have completed a comprehensive update of all references from `swarm-social.onrender.com` to `swarm-feed-generator.onrender.com`, fixing misconfigurations in the DID document, server endpoints, and service references. Progress has been made with some endpoints now working (health, describeFeedGenerator, getFeedSkeleton), but we still need to fix issues with the debug endpoint, DID document serving, and XRPC root endpoints.
 - **Update (March 16, 2025)**: We have clarified the domain usage throughout the codebase, ensuring that `swarm-feed-generator.onrender.com` is used for feed generator service references and `swarm-social.onrender.com` is used for the main Swarm web application references.
 - **Update (March 17, 2025)**: We have successfully resolved the "could not resolve identity: did:web:swarm-feed-generator.onrender.com" error. The Swarm Social client application is now fully functional and able to properly connect to the feed generator service. Users can now access the application without any DID resolution errors. The empty feed state is correctly displayed with prompts to find accounts to follow and discover custom feeds.
+- **Update (March 18, 2025)**: We have identified and addressed issues with the firehose subscription that were preventing posts from appearing in the Swarm Community feed. We've implemented an admin endpoint for manually updating the feed and created a suite of troubleshooting scripts to diagnose and fix common issues. A comprehensive troubleshooting guide has been created to document these solutions.
 
 ## Domain Usage Guidelines
 
@@ -319,6 +320,80 @@ After investigating the errors, we discovered that many references to `swarm-soc
 - When changing a service's domain, a systematic approach is needed to update all references
 - Testing each endpoint after such changes is essential to verify everything is working correctly
 
+### 2. Firehose Subscription Issues
+
+#### Challenge
+Users reported that their posts were not appearing in the Swarm Community feed, despite being correctly listed in the `SWARM_COMMUNITY_MEMBERS` array. After investigation, we discovered several issues related to the firehose subscription.
+
+#### Root Causes
+1. **Service Hibernation**: Render's free tier services hibernate after 15 minutes of inactivity, causing the firehose subscription to disconnect.
+2. **Non-persistent Storage**: The database is not persisted between service restarts on Render's free tier, causing indexed posts to be lost.
+3. **HTTP Method Handling**: The service was returning HTTP 405 "Method Not Allowed" errors for HEAD requests, which may impact the firehose subscription.
+4. **Subscription Reconnection**: The feed generator wasn't properly reconnecting to the firehose after service restarts or hibernation.
+5. **Database Reset**: Each time the service restarts, the SQLite database is reset, losing all previously indexed posts.
+
+#### Implemented Solutions
+
+1. **Admin Endpoint for Manual Feed Updates**:
+   - Created an admin endpoint (`/admin/update-feed`) that allows manually adding posts to the feed
+   - Implemented a database stats endpoint (`/admin/stats`) to check the current state of the database
+   - Added proper error handling and validation for the admin endpoints
+
+2. **Troubleshooting Scripts**:
+   - `check-feed-generator-env.js`: Checks the feed generator's environment variables
+   - `check-firehose-subscription.js`: Checks if the feed generator is properly subscribing to the firehose
+   - `check-feed-database.js`: Checks if posts are being stored in the database
+   - `restart-feed-generator.js`: Restarts the feed generator service and reconnects to the firehose
+   - `fix-feed-generator-database.js`: Generates SQL statements to manually add posts to the database
+   - `create-test-post.js`: Creates a test post to verify if it gets indexed
+   - `test-feed-indexing.js`: Tests if the feed generator is properly indexing posts
+
+3. **Service Maintenance Script**:
+   - Created a `keep-service-active.js` script that periodically pings the service to prevent hibernation
+   - This script can be run on a separate server or locally to keep the feed generator active
+
+4. **Comprehensive Troubleshooting Guide**:
+   - Created a detailed troubleshooting guide (`docs/feed-generator-troubleshooting.md`) that documents common issues and solutions
+   - The guide includes step-by-step instructions for diagnosing and fixing feed generator issues
+
+#### Lessons Learned
+1. **Free Tier Limitations**: Render's free tier has significant limitations that affect the feed generator's reliability:
+   - Service hibernation after 15 minutes of inactivity
+   - Non-persistent storage between service restarts
+   - Limited resources affecting performance
+
+2. **Firehose Subscription Complexity**: The AT Protocol firehose subscription is complex and requires careful handling:
+   - Proper reconnection logic is essential
+   - The service must handle various HTTP methods correctly
+   - The subscription can be affected by network issues and service restarts
+
+3. **Database Persistence**: For reliable operation, the feed generator needs persistent storage:
+   - SQLite is not ideal for services that restart frequently
+   - A cloud-hosted database would be more reliable but requires additional configuration
+
+4. **Manual Intervention Options**: Having manual intervention options is crucial for services with potential reliability issues:
+   - Admin endpoints for manual updates
+   - Scripts for diagnosing and fixing common issues
+   - Clear documentation for troubleshooting
+
+#### Next Steps
+1. **Consider Upgrading to Paid Tier**: For improved reliability, consider upgrading to a paid Render tier with:
+   - No service hibernation
+   - Persistent storage
+   - More resources for better performance
+
+2. **Implement Database Backup**: Create a mechanism to periodically backup the database to prevent data loss during service restarts.
+
+3. **Enhance Firehose Subscription**: Improve the firehose subscription implementation with:
+   - More robust reconnection logic
+   - Better error handling
+   - Detailed logging for debugging
+
+4. **Monitor Service Health**: Set up monitoring to detect and alert on service issues:
+   - Regular health checks
+   - Alerts for service hibernation
+   - Monitoring of database state and post indexing
+
 ## Reference Information
 
 ### Environment Variable Configuration
@@ -359,6 +434,9 @@ DATABASE_URL=sqlite:swarm-feed.db
 - Health Check: `https://swarm-feed-generator.onrender.com/health`
 - XRPC Test Endpoint: `https://swarm-feed-generator.onrender.com/xrpc-test`
 - Feed URI: `at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.generator/swarm-community`
+- Admin Endpoints:
+  - Stats: `https://swarm-feed-generator.onrender.com/admin/stats`
+  - Update Feed: `https://swarm-feed-generator.onrender.com/admin/update-feed`
 
 ### Key Files
 
@@ -370,10 +448,20 @@ DATABASE_URL=sqlite:swarm-feed.db
 - `scripts/deploy-did-document.js`: Script to deploy the DID document to the public directory
 - `scripts/ensure-did-document.js`: Script to ensure the DID document exists at build and startup time
 - `scripts/update-did-document.js`: Script to update the DID document with the correct hostname
+- `scripts/check-feed-generator-env.js`: Script to check the feed generator's environment variables
+- `scripts/check-firehose-subscription.js`: Script to check if the feed generator is properly subscribing to the firehose
+- `scripts/check-feed-database.js`: Script to check if posts are being stored in the database
+- `scripts/restart-feed-generator.js`: Script to restart the feed generator service
+- `scripts/fix-feed-generator-database.js`: Script to generate SQL statements to manually add posts to the database
+- `scripts/create-test-post.js`: Script to create a test post to verify if it gets indexed
+- `scripts/test-feed-indexing.js`: Script to test if the feed generator is properly indexing posts
+- `scripts/keep-service-active.js`: Script to periodically ping the service to prevent hibernation
+- `docs/feed-generator-troubleshooting.md`: Comprehensive troubleshooting guide for the feed generator
 - `package.json`: Contains build scripts including the post-build hook
 - `.well-known/did.json`: Source DID document
 - `public/.well-known/did.json`: Public DID document that gets served
 - `public/did.json`: Static fallback DID document 
+- `src/admin.ts`: Implements admin endpoints for manually managing the feed generator
 
 ## Lessons Learned
 
@@ -407,6 +495,14 @@ DATABASE_URL=sqlite:swarm-feed.db
 
 15. **Domain Consistency**: When using a specific domain for a service, it's crucial to maintain consistency across all configuration files, environment variables, and code references.
 
+16. **Free Tier Limitations**: When using free tier services like Render, be aware of limitations such as service hibernation and non-persistent storage that can affect reliability.
+
+17. **Manual Intervention Options**: For services with potential reliability issues, having manual intervention options (like admin endpoints) is crucial for maintaining functionality.
+
+18. **Comprehensive Troubleshooting**: Creating detailed troubleshooting guides and diagnostic scripts helps users and developers quickly identify and fix common issues.
+
+19. **Service Maintenance**: For services on free tiers, implementing maintenance scripts (like keep-service-active.js) can help mitigate hibernation issues.
+
 ## Next Steps
 
 1. **Fix Remaining Endpoint Issues**:
@@ -439,3 +535,15 @@ DATABASE_URL=sqlite:swarm-feed.db
    - Add more detailed information to the landing page
    - Create a dashboard for monitoring feed performance and usage
    - Implement user feedback mechanisms for the feeds
+
+7. **Reliability Improvements**:
+   - Consider upgrading to a paid Render tier for better reliability
+   - Implement database backup mechanisms
+   - Enhance the firehose subscription with more robust reconnection logic
+   - Set up monitoring to detect and alert on service issues
+
+8. **Admin Interface Enhancement**:
+   - Expand the admin endpoints with more functionality
+   - Create a simple web interface for the admin endpoints
+   - Add authentication to the admin endpoints for security
+   - Implement more detailed logging for admin actions
