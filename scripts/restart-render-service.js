@@ -1,5 +1,6 @@
 // scripts/restart-render-service.js
 // This script restarts a service on Render.com
+// For more information, see .cursor/instructions/feed-indexing-troubleshooting-guide.md
 
 const https = require('https')
 const dotenv = require('dotenv')

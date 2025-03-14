@@ -1,5 +1,6 @@
 // scripts/manually-add-post-to-db.js
 // This script directly adds a post to the feed database
+// For more information, see .cursor/instructions/feed-indexing-troubleshooting-guide.md
 
 const {BskyAgent} = require('@atproto/api')
 const dotenv = require('dotenv')

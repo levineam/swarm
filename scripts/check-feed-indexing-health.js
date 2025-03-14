@@ -1,5 +1,6 @@
-// scripts/check-service-health.js
+// scripts/check-feed-indexing-health.js
 // This script checks the health of the feed generator service
+// For more information, see .cursor/instructions/feed-indexing-troubleshooting-guide.md
 
 const https = require('https')
 const dotenv = require('dotenv')
