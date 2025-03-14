@@ -38,7 +38,7 @@ Each troubleshooting session should be logged with the following format:
 - Feed generator record in Bluesky PDS is correct
 
 #### Steps Taken
-1. Verified service health with `scripts/check-service-health.js`
+1. Verified service health with `scripts/check-feed-indexing-health.js`
 2. Confirmed DID resolution is working via PLC directory
 3. Confirmed the user's DID is correctly listed in `SWARM_COMMUNITY_MEMBERS` array
 4. Created test posts with `scripts/create-test-post.js`

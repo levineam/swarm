@@ -22,8 +22,8 @@ curl -i https://swarm-feed-generator.onrender.com/health
 curl -i https://swarm-feed-generator.onrender.com/xrpc/app.bsky.feed.describeFeedGenerator
 curl -i https://swarm-feed-generator.onrender.com/xrpc/app.bsky.feed.getFeedSkeleton?feed=at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.generator/swarm-community
 
-# Run the service health check script
-node scripts/check-service-health.js
+# Run the feed indexing health check script
+node scripts/check-feed-indexing-health.js
 ```
 
 ### 2. Verify DID Resolution
@@ -94,7 +94,7 @@ Through extensive troubleshooting, we've identified several root causes for the 
 
 3. Run the comprehensive health check script:
    ```bash
-   node scripts/check-service-health.js
+   node scripts/check-feed-indexing-health.js
    ```
 
 #### Step 2: Verify Your DID is in the Community Members List
@@ -215,7 +215,7 @@ For a more permanent solution to these issues, consider:
 
 | Script | Purpose | Usage |
 |--------|---------|-------|
-| `scripts/check-service-health.js` | Checks if all service endpoints are responding | `node scripts/check-service-health.js` |
+| `scripts/check-feed-indexing-health.js` | Checks if all service endpoints are responding | `node scripts/check-feed-indexing-health.js` |
 | `scripts/force-did-resolution.js` | Forces DID resolution | `node scripts/force-did-resolution.js` |
 | `scripts/keep-service-active.js` | Keeps the service active to prevent hibernation | `node scripts/keep-service-active.js` |
 | `scripts/restart-render-service.js` | Restarts the feed generator service on Render | `node scripts/restart-render-service.js` |
