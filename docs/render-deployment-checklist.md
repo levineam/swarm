@@ -54,6 +54,12 @@ node swarm-feed-generator/feed-generator/scripts/checkFeedRecord.js
 
 # 5. If the DID in the feed generator record is incorrect, update it
 # node swarm-feed-generator/feed-generator/scripts/updateFeedGenDid.js
+
+# 6. If you're experiencing DID resolution issues, force refresh the DID resolution
+node scripts/force-did-resolution.js
+
+# 7. If posts aren't appearing in the feed, test the feed indexing
+node scripts/test-feed-indexing.js
 ```
 
 ### 2. Manual Verification Steps
@@ -70,6 +76,36 @@ node swarm-feed-generator/feed-generator/scripts/checkFeedRecord.js
   - [ ] GetFeedSkeleton: https://swarm-feed-generator.onrender.com/xrpc/app.bsky.feed.getFeedSkeleton?feed=at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.generator/swarm-community
 - [ ] Log in to the Bluesky app and check if the Swarm Community feed is available and working
 
+## Keeping Services Active
+
+Render's free tier spins down services after periods of inactivity, which can cause issues with DID resolution and feed indexing. To prevent these issues, consider the following strategies:
+
+### 1. Run the Keep-Service-Active Script
+
+The `keep-service-active.js` script periodically pings the services to keep them active:
+
+```bash
+# Run the script in the background
+node scripts/keep-service-active.js &
+
+# To stop the script, find its process ID and kill it
+ps aux | grep keep-service-active
+kill <PID>
+```
+
+### 2. Set Up a Scheduled Task
+
+For a more permanent solution, set up a scheduled task (cron job) to periodically ping the services:
+
+```bash
+# Example cron job that runs every 10 minutes
+*/10 * * * * cd /path/to/social-app && node scripts/wake-up-services.js >> /path/to/logs/wake-up.log 2>&1
+```
+
+### 3. Use a Third-Party Service
+
+Consider using a third-party service like UptimeRobot or Pingdom to periodically ping your services.
+
 ## Troubleshooting Common Issues
 
 ### DID Resolution Issues
@@ -84,9 +120,13 @@ If you encounter DID resolution issues (e.g., "could not resolve identity: did:w
    - Run the `checkFeedRecord.js` script to verify the DID in the feed generator record
    - If incorrect, run the `updateFeedGenDid.js` script to update it
 
-3. **Wait for propagation**:
-   - After updating the DID document or feed generator record, wait a few minutes for changes to propagate
-   - The AT Protocol's DID resolution has caching mechanisms that may delay updates
+3. **Force refresh the DID resolution**:
+   - Run the `force-did-resolution.js` script to attempt to force refresh the DID resolution
+   - Clear your browser cache and reload the page
+
+4. **Wake up the services**:
+   - Run the `wake-up-services.js` script to ensure all services are active
+   - Wait a few minutes for the services to fully initialize
 
 ### Service Unavailable Issues
 
@@ -110,8 +150,8 @@ If the feed generator service is unavailable or returning errors:
 If the feed is not showing posts:
 
 1. **Check the firehose subscription**:
-   - Verify that the feed generator is successfully subscribing to the firehose
-   - Check the logs for any subscription errors
+   - Run the `test-feed-indexing.js` script to verify if posts are being properly indexed
+   - Check the Render logs for any subscription errors
 
 2. **Check the database**:
    - Verify that posts are being indexed in the database
@@ -128,6 +168,7 @@ When using Render's free tier, be aware of these limitations:
 1. **Service Spin Down**:
    - Services on the free tier will spin down after 15 minutes of inactivity
    - The first request after inactivity will take 30-60 seconds to process
+   - This can cause DID resolution issues and feed indexing problems
 
 2. **Database Persistence**:
    - SQLite databases are stored in the filesystem, which is ephemeral on Render's free tier
