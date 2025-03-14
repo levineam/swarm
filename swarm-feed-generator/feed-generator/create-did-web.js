@@ -43,7 +43,8 @@ async function createDidWeb() {
     console.log('IMPORTANT: Keep these keys secure and back them up safely.')
 
     // Get the domain from the environment or use the default
-    const domain = process.env.FEEDGEN_HOSTNAME || 'swarm-social.onrender.com'
+    const domain =
+      process.env.FEEDGEN_HOSTNAME || 'swarm-feed-generator.onrender.com'
 
     // Create the did:web identifier
     const did = `did:web:${domain}`

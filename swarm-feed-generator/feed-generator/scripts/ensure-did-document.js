@@ -13,7 +13,8 @@ const dotenv = require('dotenv')
 dotenv.config()
 
 // Get the hostname and service DID from environment variables
-const hostname = process.env.FEEDGEN_HOSTNAME || 'swarm-social.onrender.com'
+const hostname =
+  process.env.FEEDGEN_HOSTNAME || 'swarm-feed-generator.onrender.com'
 const serviceDid = process.env.FEEDGEN_SERVICE_DID || `did:web:${hostname}`
 
 console.log('Ensuring DID document is properly created and accessible...')

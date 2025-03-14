@@ -42,6 +42,8 @@ We've established the foundational infrastructure and are now ready to expand in
 - **Landing Page**: Implemented a user-friendly landing page for the feed generator
 - **XRPC Endpoints**: Successfully implemented and tested all required XRPC endpoints
 - **DID Resolution**: Fixed issues with DID resolution by updating the service type and ID
+- **Domain Usage Guidelines**: Established clear guidelines for using the correct domains across the codebase
+- **Client-Feed Generator Connection**: Successfully resolved the "could not resolve identity" error, enabling the client application to properly connect to the feed generator
 
 ### Implementation Challenges and Solutions
 For detailed notes on implementation challenges, solutions, and lessons learned during the feed generator development, refer to [Feed Generator Implementation Notes](./feed-generator-implementation-notes.md). This document captures the technical details and troubleshooting steps that were necessary to successfully deploy the feed generator in production.
@@ -54,13 +56,14 @@ For detailed notes on implementation challenges, solutions, and lessons learned 
 - **Technology**: React/React Native frontend
 - **Features**: User interface for viewing feeds, managing communities, user profiles
 - **Integration Points**: AT Protocol client libraries, Feed Generator API
+- **Deployment**: Hosted on Render at https://swarm-social.onrender.com
 
 #### Feed Generator Service
 - **Technology**: Node.js backend with Express
 - **Features**: Generates custom feeds based on community membership
 - **Design Decision**: Single service hosting multiple algorithms for different communities
 - **Integration Points**: AT Protocol firehose, Bluesky API, client application
-- **Deployment**: Hosted on Render at https://swarm-social.onrender.com
+- **Deployment**: Hosted on Render at https://swarm-feed-generator.onrender.com
 - **Feed URI**: at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.generator/swarm-community
 - **Technical Implementation**: See [Feed Generator Implementation Notes](./feed-generator-implementation-notes.md) for detailed implementation information, including DID document configuration, build process, and deployment considerations.
 
@@ -75,6 +78,20 @@ For detailed notes on implementation challenges, solutions, and lessons learned 
 3. Client application authenticates with the feed generator using JWT tokens via Bluesky credentials
 4. Client requests feed data from feed generator
 5. Users interact with content through the client application
+
+### Domain Architecture
+The Swarm platform consists of two separate services with distinct domains:
+
+1. **Client Application**: https://swarm-social.onrender.com
+   - Provides the user interface for interacting with the Swarm community
+   - References to the main Swarm web application use this domain
+
+2. **Feed Generator Service**: https://swarm-feed-generator.onrender.com
+   - Implements the AT Protocol feed generator specification
+   - All feed generator service endpoints use this domain
+   - The DID document and service references use this domain
+
+This separation ensures proper functionality while maintaining a clear distinction between the client and service components.
 
 ## 4. Community Management System
 
@@ -155,11 +172,16 @@ By maintaining a single feed generator service with support for multiple algorit
 - **Feed Generation Performance**: Current implementation works well for small to medium communities, but will need optimization for larger scale
 - **Token Management**: Access tokens require regular renewal; a token refresh mechanism will be needed for production
 - **DID and Identity Configuration**: Working with DIDs and the AT Protocol required careful attention to detail and multiple iterations to get right. See [Feed Generator Implementation Notes](./feed-generator-implementation-notes.md) for detailed lessons learned.
+- **Domain Separation**: Maintaining clear separation between the client application domain (swarm-social.onrender.com) and the feed generator service domain (swarm-feed-generator.onrender.com) is crucial for proper functionality.
+- **DID Document Structure**: The AT Protocol has specific requirements for DID document structure, including service types ("BskyFeedGenerator") and service IDs ("#bsky_fg").
+- **Deployment Environment Variables**: Consistent environment variables across development and production environments are essential for proper service configuration.
 
 ### Implementation Approach
 - **Modular Design**: The separation of feed generator logic from client application provides flexibility
 - **Documentation-First**: Creating comprehensive documentation before and during implementation improved clarity
 - **Incremental Testing**: Testing each component individually before integration reduced debugging time
+- **Systematic Domain Management**: When managing multiple domains, a systematic approach to updating references is necessary to ensure consistency
+- **Redundant Solutions**: Implementing multiple layers of redundancy for critical components (like DID document serving) provides resilience against unexpected issues
 
 ---
 
