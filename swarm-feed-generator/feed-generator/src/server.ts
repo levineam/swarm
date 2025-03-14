@@ -242,6 +242,11 @@ export class FeedGenerator {
       : this.cfg.port
 
     log(`Starting server on port ${port}`)
+
+// Set up admin router
+const adminRouter = createAdminRouter(db);
+app.use('/admin', adminRouter);
+
     this.server = this.app.listen(port, this.cfg.listenhost)
     await events.once(this.server, 'listening')
     log(`Server is now listening on port ${port}`)
@@ -259,6 +264,8 @@ export class FeedGenerator {
           <style>
             body {
               font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+import { createAdminRouter } from './admin';
+
               line-height: 1.6;
               color: #333;
               max-width: 800px;
