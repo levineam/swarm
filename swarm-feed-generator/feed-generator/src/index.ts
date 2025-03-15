@@ -1,24 +1,28 @@
 import dotenv from 'dotenv'
 
 import { FeedGenerator } from './server'
+import { createChildLogger, logError } from './util/logger'
+
+// Create a root logger for the application
+const logger = createChildLogger('app')
 
 // load .env before doing anything else
 dotenv.config()
 
 const run = async () => {
-  console.log('Starting Feed Generator...')
-  console.log('Environment Variables:')
-  console.log('- NODE_ENV:', process.env.NODE_ENV)
-  console.log('- PORT:', process.env.PORT)
-  console.log('- FEEDGEN_HOSTNAME:', process.env.FEEDGEN_HOSTNAME)
-  console.log('- FEEDGEN_PUBLISHER_DID:', process.env.FEEDGEN_PUBLISHER_DID)
-  console.log('- FEEDGEN_SERVICE_DID:', process.env.FEEDGEN_SERVICE_DID)
-  console.log(
-    '- DATABASE_URL:',
-    process.env.DATABASE_URL
+  logger.info('Starting Feed Generator...')
+
+  // Log environment variables
+  logger.info('Environment Variables', {
+    NODE_ENV: process.env.NODE_ENV,
+    PORT: process.env.PORT,
+    FEEDGEN_HOSTNAME: process.env.FEEDGEN_HOSTNAME,
+    FEEDGEN_PUBLISHER_DID: process.env.FEEDGEN_PUBLISHER_DID,
+    FEEDGEN_SERVICE_DID: process.env.FEEDGEN_SERVICE_DID,
+    DATABASE_URL: process.env.DATABASE_URL
       ? 'Set (PostgreSQL or SQLite)'
       : 'Not set (using default SQLite)',
-  )
+  })
 
   // Create the feed generator
   const feedGenerator = FeedGenerator.create({
@@ -36,15 +40,21 @@ const run = async () => {
     subscriptionReconnectDelay: 3000,
   })
 
-  await feedGenerator.start()
-  console.log(
-    `🚀 Feed generator running at http://${
-      process.env.FEEDGEN_LISTENHOST || '0.0.0.0'
-    }:${process.env.PORT || 3000}`,
-  )
+  try {
+    await feedGenerator.start()
+    logger.info('Feed generator started successfully', {
+      url: `http://${process.env.FEEDGEN_LISTENHOST || '0.0.0.0'}:${
+        process.env.PORT || 3000
+      }`,
+    })
+  } catch (err) {
+    logError('Failed to start feed generator', err)
+    process.exit(1)
+  }
 }
 
 // Run the server
 run().catch((err) => {
-  console.error('Failed to start feed generator:', err)
+  logError('Unexpected error during startup', err)
+  process.exit(1)
 })
