@@ -8,7 +8,7 @@
 import express from 'express';
 
 // Create a router for admin endpoints
-export const createAdminRouter = (_db: any) => {
+export const createAdminRouter = (db: any) => {
   const router = express.Router();
 
   /**
@@ -16,7 +16,7 @@ export const createAdminRouter = (_db: any) => {
    * POST /admin/update-feed
    * Body: { feedUri: string, postUris: string[] }
    */
-  router.post('/update-feed', (req, res) => {
+  router.post('/update-feed', async (req, res) => {
     try {
       const { feedUri, postUris } = req.body;
 
@@ -36,8 +36,27 @@ export const createAdminRouter = (_db: any) => {
         console.log('Adding posts to swarm-community feed');
       }
 
-      // Add posts to feed (implementation depends on your database structure)
       console.log(`Adding ${postUris.length} posts to feed ${feedId}`);
+
+      // Actually add posts to the database
+      const postsToAdd = postUris.map(uri => {
+        const parts = uri.split('/');
+        const creator = parts[2]; // did:plc:...
+        const cid = 'bafyreihbvkwdpxqvvkxqjgvjlvvlvqvkxqvjvlvvlvqvkxqvjvlvvlvqvkxq'; // Placeholder CID
+        return {
+          uri,
+          cid,
+          creator,
+          indexedAt: new Date().toISOString()
+        };
+      });
+
+      // Insert posts into the database
+      await db
+        .insertInto('post')
+        .values(postsToAdd)
+        .onConflict((oc) => oc.doNothing())
+        .execute();
 
       return res.json({ 
         success: true, 
@@ -55,12 +74,26 @@ export const createAdminRouter = (_db: any) => {
    * Get database stats
    * GET /admin/stats
    */
-  router.get('/stats', (req, res) => {
+  router.get('/stats', async (req, res) => {
     try {
-      // Simplified implementation that doesn't depend on specific database methods
+      // Get actual database stats
+      const postCount = await db
+        .selectFrom('post')
+        .select(db.fn.count('uri').as('count'))
+        .executeTakeFirst();
+
+      const recentPosts = await db
+        .selectFrom('post')
+        .selectAll()
+        .orderBy('indexedAt', 'desc')
+        .limit(5)
+        .execute();
+
       return res.json({
         message: 'Database stats endpoint',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        postCount: postCount?.count || 0,
+        recentPosts
       });
     } catch (error) {
       console.error('Error getting stats:', error);
