@@ -4,11 +4,10 @@
  * This file implements admin endpoints for manually managing the feed generator.
  */
 
-import express from 'express';
-import { Database } from './db';
+import express, { Request, Response } from 'express';
 
 // Create a router for admin endpoints
-export const createAdminRouter = (db: any) => {
+export const createAdminRouter = (_db: any) => {
   const router = express.Router();
 
   /**
@@ -16,7 +15,7 @@ export const createAdminRouter = (db: any) => {
    * POST /admin/update-feed
    * Body: { feedUri: string, postUris: string[] }
    */
-  router.post('/update-feed', async (req, res) => {
+  router.post('/update-feed', function(req: Request, res: Response) {
     try {
       const { feedUri, postUris } = req.body;
 
@@ -55,7 +54,7 @@ export const createAdminRouter = (db: any) => {
    * Get database stats
    * GET /admin/stats
    */
-  router.get('/stats', async (req, res) => {
+  router.get('/stats', function(req: Request, res: Response) {
     try {
       // Simplified implementation that doesn't depend on specific database methods
       return res.json({
