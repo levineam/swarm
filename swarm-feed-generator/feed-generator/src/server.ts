@@ -11,6 +11,7 @@ import describeGenerator from './methods/describe-generator'
 import feedGeneration from './methods/feed-generation'
 import { FirehoseSubscription } from './subscription'
 import makeWellKnownRouter from './well-known'
+import { createAdminRouter } from './admin'
 
 // Store logs in memory for debugging
 const logs: string[] = []
@@ -75,6 +76,10 @@ export class FeedGenerator {
     app.use(cors())
     app.use(express.json())
 
+    // Set up admin router
+    const adminRouter = createAdminRouter(db)
+    app.use('/admin', adminRouter)
+
     // Add a logs endpoint for debugging
     app.get('/logs', (req, res) => {
       // This is a simple implementation that returns recent logs
@@ -94,7 +99,7 @@ export class FeedGenerator {
 
     // Health check endpoint
     app.get('/health', (req: express.Request, res: express.Response) => {
-      log('Health check endpoint called')
+      log('Health check called')
       res.status(200).send('OK')
     })
 
@@ -243,10 +248,6 @@ export class FeedGenerator {
 
     log(`Starting server on port ${port}`)
 
-// Set up admin router
-const adminRouter = createAdminRouter(db);
-app.use('/admin', adminRouter);
-
     this.server = this.app.listen(port, this.cfg.listenhost)
     await events.once(this.server, 'listening')
     log(`Server is now listening on port ${port}`)
@@ -264,8 +265,6 @@ app.use('/admin', adminRouter);
           <style>
             body {
               font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-import { createAdminRouter } from './admin';
-
               line-height: 1.6;
               color: #333;
               max-width: 800px;
@@ -350,7 +349,7 @@ import { createAdminRouter } from './admin';
           <p>This feed generator is integrated with the <a href="https://swarm-social.onrender.com" target="_blank">Swarm Social</a> platform, which provides a customized Bluesky experience with community features.</p>
           
           <footer style="margin-top: 40px; border-top: 1px solid #eee; padding-top: 20px;">
-            <p>© ${new Date().getFullYear()} Swarm Community Platform</p>
+            <p>© ${new Date().getFullYear()} Swarm Social</p>
           </footer>
         </body>
         </html>
