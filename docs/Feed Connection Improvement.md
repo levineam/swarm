@@ -80,6 +80,30 @@ firehose.on('message', (msg) \=\> {
 
 **Outcome**: A stable firehose connection that recovers from disconnections and catches up on missed posts.
 
+**Execution Summary**:
+- Examined the existing firehose connection implementation in `subscription.ts` and identified areas for improvement.
+- Enhanced the `FirehoseSubscriptionBase` class with:
+  - Connection status tracking via a new `isConnected` property
+  - Reconnection attempt counter to track consecutive failures
+  - Exponential backoff algorithm with configurable base delay and maximum delay cap
+  - Cursor tracking to store and retrieve the last processed message
+- Added comprehensive logging for connection events:
+  - Connection attempts and successful connections
+  - Disconnections and reconnection attempts
+  - Cursor updates for tracking progress
+- Created a dedicated health check endpoint at `/health/firehose` that reports:
+  - Current connection status (connected/disconnected)
+  - Last processed cursor
+  - Timestamp of the status check
+- Implemented a monitoring script `track-firehose-cursor.js` that:
+  - Periodically checks the firehose health endpoint
+  - Logs connection status and cursor information
+  - Saves cursor information to a file for persistence
+  - Can automatically restart the service after multiple consecutive failures
+  - Provides detailed logging of all monitoring activities
+
+**Status: Done**
+
 ---
 
 **Step 3: Assess Database Needs and Migrate if Necessary**
