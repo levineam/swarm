@@ -4,14 +4,14 @@ import events from 'events'
 import express from 'express'
 import http from 'http'
 
-import { AppContext, Config } from './config'
+import { createAdminRouter } from './admin'
+import { AppContext, Config, getDatabaseLocation } from './config'
 import { createDb, Database, migrateToLatest } from './db'
 import { createServer as createXrpcServer } from './lexicon'
 import describeGenerator from './methods/describe-generator'
 import feedGeneration from './methods/feed-generation'
 import { FirehoseSubscription } from './subscription'
 import makeWellKnownRouter from './well-known'
-import { createAdminRouter } from './admin'
 
 // Store logs in memory for debugging
 const logs: string[] = []
@@ -54,11 +54,13 @@ export class FeedGenerator {
           hostname: cfg.hostname,
           serviceDid: cfg.serviceDid,
           publisherDid: cfg.publisherDid,
+          databaseType: cfg.databaseUrl ? 'PostgreSQL' : 'SQLite',
         }),
     )
 
     const app = express()
-    const db = createDb(cfg.sqliteLocation)
+    const dbLocation = getDatabaseLocation(cfg)
+    const db = createDb(dbLocation)
     const firehose = new FirehoseSubscription(db, cfg.subscriptionEndpoint)
 
     // Logging middleware
@@ -102,6 +104,30 @@ export class FeedGenerator {
       log('Health check called')
       res.status(200).send('OK')
     })
+
+    // Firehose health check endpoint
+    app.get(
+      '/health/firehose',
+      (req: express.Request, res: express.Response) => {
+        log('Firehose health check called')
+        const isConnected = firehose.isFirehoseConnected()
+        const lastCursor = firehose.getLastCursor()
+
+        if (isConnected) {
+          res.status(200).json({
+            status: 'connected',
+            lastCursor: lastCursor,
+            timestamp: new Date().toISOString(),
+          })
+        } else {
+          res.status(503).json({
+            status: 'disconnected',
+            lastCursor: lastCursor,
+            timestamp: new Date().toISOString(),
+          })
+        }
+      },
+    )
 
     // Debug endpoint
     app.get('/debug', (req: express.Request, res: express.Response) => {
@@ -313,6 +339,7 @@ export class FeedGenerator {
           
           <h2>API Endpoints</h2>
           <div class="endpoint">GET /health - Health check endpoint</div>
+          <div class="endpoint">GET /health/firehose - Firehose health check</div>
           <div class="endpoint">GET /debug - Debug information</div>
           <div class="endpoint">GET /xrpc-test - Test XRPC functionality</div>
           <div class="endpoint">GET /xrpc/app.bsky.feed.describeFeedGenerator - Feed generator metadata</div>
