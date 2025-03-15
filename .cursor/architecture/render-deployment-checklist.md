@@ -94,6 +94,16 @@ This document provides a step-by-step guide for deploying and maintaining the Sw
      - Check that your DID is in the `SWARM_COMMUNITY_MEMBERS` array
      - Restart the feed generator service using `scripts/restart-render-service.js`
      - Check the Render logs for any errors
+     - Use the admin endpoint to manually add posts to the feed:
+       ```bash
+       curl -X POST "https://swarm-feed-generator.onrender.com/admin/update-feed" \
+         -H "Content-Type: application/json" \
+         -d '{
+           "feedUri": "at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.generator/swarm-community",
+           "postUris": ["at://did:plc:yourdid/app.bsky.feed.post/postid"]
+         }'
+       ```
+     - Run the `scripts/auto-add-community-posts.js` script to automatically add recent posts from community members
    - On the free tier, the database is not persisted between service restarts, which means:
      - Posts may be lost when the service restarts
      - The service may hibernate after 15 minutes of inactivity
@@ -117,6 +127,13 @@ If you're experiencing issues with the free tier, consider upgrading to a paid t
 - Persistent storage
 - Better performance
 - More reliable service
+
+**Important**: We have confirmed that upgrading to a paid tier resolves most of the common issues with the feed generator, including:
+- Service hibernation causing missed posts
+- Database reset on service restart
+- Unstable firehose connection
+
+The cost of a paid tier on Render is relatively low compared to the benefits it provides for service reliability. We strongly recommend upgrading for production use.
 
 ### Scripts Reference
 

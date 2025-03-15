@@ -20,6 +20,8 @@ The feed generator is built using Node.js and Express, and it uses the AT Protoc
 - **Update (March 16, 2025)**: We have clarified the domain usage throughout the codebase, ensuring that `swarm-feed-generator.onrender.com` is used for feed generator service references and `swarm-social.onrender.com` is used for the main Swarm web application references.
 - **Update (March 17, 2025)**: We have successfully resolved the "could not resolve identity: did:web:swarm-feed-generator.onrender.com" error. The Swarm Social client application is now fully functional and able to properly connect to the feed generator service. Users can now access the application without any DID resolution errors. The empty feed state is correctly displayed with prompts to find accounts to follow and discover custom feeds.
 - **Update (March 18, 2025)**: We have identified and addressed issues with the firehose subscription that were preventing posts from appearing in the Swarm Community feed. We've implemented an admin endpoint for manually updating the feed and created a suite of troubleshooting scripts to diagnose and fix common issues. A comprehensive troubleshooting guide has been created to document these solutions.
+- **Update (March 19, 2025)**: We have upgraded the feed generator service to a paid tier on Render, which eliminates hibernation issues and provides persistent storage. This has significantly improved the reliability of the feed generator, ensuring that the firehose subscription remains stable and posts are properly indexed. We've also implemented a GitHub Actions workflow to run the `auto-add-community-posts.js` script hourly as a backup mechanism to ensure posts appear in the feed even if there are issues with the feed algorithm.
+- **Update (March 20, 2025)**: We have confirmed that the feed generator is now reliably indexing posts from community members. The admin endpoint for manually adding posts to the feed (`/admin/update-feed`) has proven to be an effective tool for ensuring posts appear in the feed. We've documented the process for using this endpoint in the troubleshooting guide and created scripts to automate post addition. The upgrade to a paid tier on Render has eliminated the hibernation and database persistence issues that were previously affecting the service.
 
 ## Domain Usage Guidelines
 
@@ -331,6 +333,7 @@ Users reported that their posts were not appearing in the Swarm Community feed, 
 3. **HTTP Method Handling**: The service was returning HTTP 405 "Method Not Allowed" errors for HEAD requests, which may impact the firehose subscription.
 4. **Subscription Reconnection**: The feed generator wasn't properly reconnecting to the firehose after service restarts or hibernation.
 5. **Database Reset**: Each time the service restarts, the SQLite database is reset, losing all previously indexed posts.
+6. **Feed Algorithm Issues**: Posts were being correctly indexed in the database but not appearing in the feed due to issues with the feed algorithm not properly filtering posts from community members.
 
 #### Implemented Solutions
 
@@ -347,14 +350,29 @@ Users reported that their posts were not appearing in the Swarm Community feed, 
    - `fix-feed-generator-database.js`: Generates SQL statements to manually add posts to the database
    - `create-test-post.js`: Creates a test post to verify if it gets indexed
    - `test-feed-indexing.js`: Tests if the feed generator is properly indexing posts
+   - `check-feed-algorithm.js`: Checks if the feed algorithm is working correctly by comparing posts in the database with posts in the feed
+   - `add-posts-to-feed.js`: Manually adds posts to the feed using the admin endpoint
+   - `auto-add-community-posts.js`: Automatically finds recent posts from community members and adds them to the feed
 
 3. **Service Maintenance Script**:
    - Created a `keep-service-active.js` script that periodically pings the service to prevent hibernation
    - This script can be run on a separate server or locally to keep the feed generator active
 
 4. **Comprehensive Troubleshooting Guide**:
-   - Created a detailed troubleshooting guide (`docs/feed-generator-troubleshooting.md`) that documents common issues and solutions
+   - Created a detailed troubleshooting guide (`.cursor/instructions/feed-indexing-troubleshooting-guide.md`) that documents common issues and solutions
    - The guide includes step-by-step instructions for diagnosing and fixing feed generator issues
+   - Created a troubleshooting log (`.cursor/instructions/feed-indexing-troubleshooting-log.md`) to track past issues and their resolutions
+
+5. **Automated Post Addition**:
+   - Set up a GitHub Actions workflow to run the `auto-add-community-posts.js` script hourly
+   - This ensures that posts from community members are added to the feed even if there are issues with the feed algorithm
+
+6. **Upgraded to Paid Tier on Render**:
+   - Upgraded the feed generator service to a paid tier on Render, which provides:
+     - No service hibernation (service remains active 24/7)
+     - Persistent storage (database persists between service restarts)
+     - Better performance and reliability
+     - Stable firehose connection
 
 #### Lessons Learned
 1. **Free Tier Limitations**: Render's free tier has significant limitations that affect the feed generator's reliability:
@@ -370,29 +388,35 @@ Users reported that their posts were not appearing in the Swarm Community feed, 
 3. **Database Persistence**: For reliable operation, the feed generator needs persistent storage:
    - SQLite is not ideal for services that restart frequently
    - A cloud-hosted database would be more reliable but requires additional configuration
+   - Upgrading to a paid tier on Render provides persistent storage
 
 4. **Manual Intervention Options**: Having manual intervention options is crucial for services with potential reliability issues:
    - Admin endpoints for manual updates
    - Scripts for diagnosing and fixing common issues
    - Clear documentation for troubleshooting
 
+5. **Feed Algorithm Complexity**: The feed algorithm needs to correctly filter posts from community members:
+   - Posts may be indexed in the database but not appearing in the feed
+   - Regular testing of the feed algorithm is important
+   - Having a backup mechanism (like automated post addition) ensures posts appear in the feed
+
 #### Next Steps
-1. **Consider Upgrading to Paid Tier**: For improved reliability, consider upgrading to a paid Render tier with:
-   - No service hibernation
-   - Persistent storage
-   - More resources for better performance
+1. **Monitor Feed Algorithm**: Regularly check if the feed algorithm is working correctly using the `check-feed-algorithm.js` script.
 
-2. **Implement Database Backup**: Create a mechanism to periodically backup the database to prevent data loss during service restarts.
-
-3. **Enhance Firehose Subscription**: Improve the firehose subscription implementation with:
+2. **Enhance Firehose Subscription**: Continue to improve the firehose subscription implementation with:
    - More robust reconnection logic
    - Better error handling
    - Detailed logging for debugging
 
-4. **Monitor Service Health**: Set up monitoring to detect and alert on service issues:
+3. **Monitor Service Health**: Set up monitoring to detect and alert on service issues:
    - Regular health checks
-   - Alerts for service hibernation
    - Monitoring of database state and post indexing
+   - Alerts for any issues with the feed algorithm
+
+4. **Optimize Database Performance**: Now that we have persistent storage, optimize the database for better performance:
+   - Add appropriate indexes
+   - Implement query optimizations
+   - Consider database maintenance tasks
 
 ## Reference Information
 
@@ -437,6 +461,7 @@ DATABASE_URL=sqlite:swarm-feed.db
 - Admin Endpoints:
   - Stats: `https://swarm-feed-generator.onrender.com/admin/stats`
   - Update Feed: `https://swarm-feed-generator.onrender.com/admin/update-feed`
+- GitHub Actions Workflow: `.github/workflows/auto-add-community-posts.yml`
 
 ### Key Files
 
@@ -456,12 +481,13 @@ DATABASE_URL=sqlite:swarm-feed.db
 - `scripts/create-test-post.js`: Script to create a test post to verify if it gets indexed
 - `scripts/test-feed-indexing.js`: Script to test if the feed generator is properly indexing posts
 - `scripts/keep-service-active.js`: Script to periodically ping the service to prevent hibernation
+- `scripts/check-feed-algorithm.js`: Script to check if the feed algorithm is working correctly
+- `scripts/add-posts-to-feed.js`: Script to manually add posts to the feed using the admin endpoint
+- `scripts/auto-add-community-posts.js`: Script to automatically find and add recent community posts to the feed
+- `.github/workflows/auto-add-community-posts.yml`: GitHub Actions workflow to run the auto-add-community-posts.js script hourly
 - `docs/feed-generator-troubleshooting.md`: Comprehensive troubleshooting guide for the feed generator
-- `package.json`: Contains build scripts including the post-build hook
-- `.well-known/did.json`: Source DID document
-- `public/.well-known/did.json`: Public DID document that gets served
-- `public/did.json`: Static fallback DID document 
-- `src/admin.ts`: Implements admin endpoints for manually managing the feed generator
+- `.cursor/instructions/feed-indexing-troubleshooting-guide.md`: Detailed guide for diagnosing and fixing feed indexing issues
+- `.cursor/instructions/feed-indexing-troubleshooting-log.md`: Log of past troubleshooting sessions and their outcomes
 
 ## Lessons Learned
 
@@ -502,6 +528,17 @@ DATABASE_URL=sqlite:swarm-feed.db
 18. **Comprehensive Troubleshooting**: Creating detailed troubleshooting guides and diagnostic scripts helps users and developers quickly identify and fix common issues.
 
 19. **Service Maintenance**: For services on free tiers, implementing maintenance scripts (like keep-service-active.js) can help mitigate hibernation issues.
+
+20. **Paid Tier Benefits**: Upgrading to a paid tier on Render provides significant benefits for service reliability:
+    - No service hibernation ensures the firehose subscription remains stable
+    - Persistent storage prevents data loss during service restarts
+    - Better performance and reliability improve the overall user experience
+
+21. **Backup Mechanisms**: Implementing backup mechanisms (like automated post addition) ensures the service remains functional even if there are issues with the primary functionality.
+
+22. **Regular Testing**: Regular testing of critical components (like the feed algorithm) helps identify and fix issues before they affect users.
+
+23. **Documentation Updates**: Keeping documentation up-to-date with the latest changes and findings is crucial for maintaining the service over time.
 
 ## Next Steps
 
@@ -547,3 +584,23 @@ DATABASE_URL=sqlite:swarm-feed.db
    - Create a simple web interface for the admin endpoints
    - Add authentication to the admin endpoints for security
    - Implement more detailed logging for admin actions
+
+9. **Feed Algorithm Improvement**:
+   - Investigate and fix issues with the feed algorithm not properly filtering posts from community members
+   - Add more detailed logging to the feed algorithm to help diagnose issues
+   - Implement more sophisticated filtering options based on user preferences
+
+10. **Monitoring Enhancement**:
+    - Set up comprehensive monitoring for the feed generator service
+    - Create alerts for issues with the feed algorithm or firehose subscription
+    - Implement regular health checks to ensure the service remains operational
+
+11. **Performance Optimization**:
+    - Now that we have persistent storage, optimize the database for better performance
+    - Implement caching strategies for frequently accessed data
+    - Optimize query performance for the feed algorithm
+
+12. **User Experience Improvement**:
+    - Enhance the landing page with more detailed information about the feeds
+    - Add user feedback mechanisms for the feeds
+    - Implement more customization options for the feeds

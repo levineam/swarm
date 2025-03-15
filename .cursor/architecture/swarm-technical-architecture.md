@@ -48,6 +48,25 @@ We've established the foundational infrastructure and are now ready to expand in
 ### Implementation Challenges and Solutions
 For detailed notes on implementation challenges, solutions, and lessons learned during the feed generator development, refer to [Feed Generator Implementation Notes](./feed-generator-implementation-notes.md). This document captures the technical details and troubleshooting steps that were necessary to successfully deploy the feed generator in production.
 
+#### Recent Challenges and Solutions
+
+1. **Feed Indexing Issues**: We encountered persistent issues with posts not appearing in the Swarm Community feed despite being correctly indexed in the database.
+   - **Root Causes**: Service hibernation on Render's free tier, non-persistent database storage, and issues with the feed algorithm not properly filtering posts.
+   - **Solutions**: 
+     - Implemented an admin endpoint (`/admin/update-feed`) for manually adding posts to the feed
+     - Created diagnostic scripts to check feed health and database status
+     - Upgraded to a paid tier on Render to eliminate hibernation and database persistence issues
+     - Implemented a GitHub Actions workflow to run the `auto-add-community-posts.js` script hourly
+
+2. **Service Reliability**: The feed generator service was experiencing intermittent issues due to Render's free tier limitations.
+   - **Root Causes**: Service hibernation after 15 minutes of inactivity, non-persistent storage between service restarts.
+   - **Solutions**:
+     - Upgraded to a paid tier on Render, which provides 24/7 uptime and persistent storage
+     - Created maintenance scripts to monitor service health and automatically restart if needed
+     - Implemented comprehensive error handling and logging
+
+These recent improvements have significantly enhanced the reliability and functionality of the Swarm Community Platform, ensuring a better user experience for community members.
+
 ## 3. Architecture Overview
 
 ### Core Components
