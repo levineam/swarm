@@ -149,24 +149,6 @@ export class FeedGenerator {
       })
     })
 
-    app.get('/xrpc/app.bsky.feed.getFeedSkeleton', (req, res) => {
-      log('Direct test endpoint for getFeedSkeleton called')
-      const feed = req.query.feed
-      log(`Feed requested: ${feed}`)
-
-      // Return a simple feed skeleton
-      res.status(200).json({
-        feed: [
-          {
-            post: 'at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.post/3kgcdlnbmm22o',
-          },
-          {
-            post: 'at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.post/3kgcdlnbmm22p',
-          },
-        ],
-      })
-    })
-
     // Add well-known routes
     const didCache = new MemoryCache()
     const didResolver = new DidResolver({
