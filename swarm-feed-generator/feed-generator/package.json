@@ -15,7 +15,8 @@
     "check-deployment": "node scripts/check-render-deployment.js",
     "check-deployment-status": "node scripts/check-deployment-status.js",
     "check-server": "node scripts/check-server-js.js",
-    "update-did": "node scripts/update-did-document.js"
+    "update-did": "node scripts/update-did-document.js",
+    "test": "jest"
   },
   "dependencies": {
     "@atproto/api": "^0.13.35",
@@ -33,14 +34,19 @@
     "express": "^4.18.2",
     "kysely": "^0.27.4",
     "multiformats": "^9.9.0",
-    "node-fetch": "^3.3.2"
+    "node-fetch": "^3.3.2",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.11",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
+    "@types/jest": "^29.5.0",
     "@types/node": "^20.1.2",
     "inquirer": "^12.0.1",
+    "jest": "^29.5.0",
+    "ts-jest": "^29.1.0",
     "ts-node": "^10.9.1",
     "typescript": "^5.0.4"
   },

@@ -2,7 +2,10 @@ import {
   isCommit,
   OutputSchema as RepoEvent,
 } from './lexicon/types/com/atproto/sync/subscribeRepos'
-import { isSwarmCommunityMember } from './swarm-community-members'
+import {
+  isSwarmCommunityMember,
+  SWARM_COMMUNITY_MEMBERS,
+} from './swarm-community-members'
 import { FirehoseSubscriptionBase, getOpsByType } from './util/subscription'
 
 export class FirehoseSubscription extends FirehoseSubscriptionBase {
@@ -37,10 +40,30 @@ export class FirehoseSubscription extends FirehoseSubscriptionBase {
       })
 
     // Filter posts for the Swarm community feed
+    console.log(
+      `[subscription] Processing ${ops.posts.creates.length} new posts from firehose`,
+    )
+    console.log(
+      `[subscription] Community members: ${SWARM_COMMUNITY_MEMBERS.length}`,
+      SWARM_COMMUNITY_MEMBERS,
+    )
+
     const swarmPostsToCreate = ops.posts.creates
       .filter((create) => {
         // only posts from Swarm community members
-        return isSwarmCommunityMember(create.author)
+        const isMember = isSwarmCommunityMember(create.author)
+        if (isMember) {
+          console.log(
+            `[subscription] Found post from community member: ${create.author}`,
+            {
+              uri: create.uri,
+              text:
+                create.record.text.substring(0, 50) +
+                (create.record.text.length > 50 ? '...' : ''),
+            },
+          )
+        }
+        return isMember
       })
       .map((create) => {
         // map Swarm community posts to a db row
@@ -52,16 +75,24 @@ export class FirehoseSubscription extends FirehoseSubscriptionBase {
         }
       })
 
+    console.log(
+      `[subscription] Found ${swarmPostsToCreate.length} posts from community members`,
+    )
+
     // Combine posts from both feeds
     const postsToCreate = [...alfPostsToCreate, ...swarmPostsToCreate]
 
     if (postsToDelete.length > 0) {
+      console.log(`[subscription] Deleting ${postsToDelete.length} posts`)
       await this.db
         .deleteFrom('post')
         .where('uri', 'in', postsToDelete)
         .execute()
     }
     if (postsToCreate.length > 0) {
+      console.log(
+        `[subscription] Inserting ${postsToCreate.length} posts (${alfPostsToCreate.length} alf, ${swarmPostsToCreate.length} swarm)`,
+      )
       await this.db
         .insertInto('post')
         .values(postsToCreate)
