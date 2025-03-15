@@ -16,7 +16,8 @@
     "check-deployment-status": "node scripts/check-deployment-status.js",
     "check-server": "node scripts/check-server-js.js",
     "update-did": "node scripts/update-did-document.js",
-    "test": "jest"
+    "test": "jest",
+    "lint": "tsc --noEmit && eslint 'src/**/*.ts' 'tests/**/*.ts'"
   },
   "dependencies": {
     "@atproto/api": "^0.13.35",
@@ -35,8 +36,10 @@
     "kysely": "^0.27.4",
     "multiformats": "^9.9.0",
     "node-fetch": "^3.3.2",
+    "pg": "^8.14.0",
     "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^5.1.7",
+    "winston": "^3.17.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.11",
@@ -44,6 +47,9 @@
     "@types/express": "^5.0.0",
     "@types/jest": "^29.5.0",
     "@types/node": "^20.1.2",
+    "@typescript-eslint/eslint-plugin": "^8.26.1",
+    "@typescript-eslint/parser": "^8.26.1",
+    "eslint": "^9.22.0",
     "inquirer": "^12.0.1",
     "jest": "^29.5.0",
     "ts-jest": "^29.1.0",

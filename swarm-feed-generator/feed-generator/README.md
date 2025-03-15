@@ -49,9 +49,62 @@ The service must be set up to respond to HTTPS queries over port 443.
 
 To publish your feed, go to the script at `scripts/publishFeedGen.ts` and fill in the variables at the top. Examples are included, and some are optional. To publish your feed generator, simply run `yarn publishFeed`.
 
-To update your feed's display data (name, avatar, description, etc.), just update the relevant variables and re-run the script.
+## Swarm Feed Generator Improvements
 
-After successfully running the script, you should be able to see your feed from within the app, as well as share it by embedding a link in a post (similar to a quote post).
+The Swarm Feed Generator has been enhanced with several improvements to make it more robust, reliable, and maintainable:
+
+### 1. Feed Algorithm Enhancements
+- Improved filtering logic to correctly identify and display posts from Swarm community members
+- Added comprehensive logging for better visibility into feed generation
+- Created unit tests to verify feed algorithm functionality
+
+### 2. Firehose Connection Reliability
+- Implemented exponential backoff for reconnection attempts to handle network disruptions
+- Added cursor tracking to resume from the last processed message after disconnections
+- Created a dedicated health check endpoint at `/health/firehose` to monitor connection status
+
+### 3. Database Flexibility
+- Added support for both SQLite (default) and PostgreSQL databases
+- Implemented auto-detection of database type based on connection string
+- Created database analysis tools to monitor performance and growth
+
+### 4. Logging and Monitoring
+- Integrated Winston for structured, multi-level logging
+- Implemented file-based logging with rotation for production environments
+- Added in-memory logging for real-time debugging via the `/logs` endpoint
+- Enhanced error handling with detailed error logging
+
+### 5. Testing and Deployment
+- Set up automated testing with Jest
+- Configured ESLint for code quality enforcement
+- Created GitHub Actions workflow for continuous integration and deployment
+- Added comprehensive documentation
+
+### 6. Performance Optimization
+- Improved query efficiency with proper indexing
+- Enhanced error handling and recovery mechanisms
+- Optimized database connections and query patterns
+
+## Development
+
+### Prerequisites
+- Node.js 18 or higher
+- Yarn package manager
+
+### Setup
+1. Clone the repository
+2. Install dependencies: `yarn install`
+3. Copy `.env.example` to `.env` and configure environment variables
+4. Start the development server: `yarn start`
+
+### Testing
+Run the test suite with: `yarn test`
+
+### Linting
+Check code quality with: `yarn lint`
+
+### Deployment
+The feed generator is automatically deployed when changes are pushed to the main branch, thanks to the GitHub Actions workflow.
 
 ## Running the Server
 

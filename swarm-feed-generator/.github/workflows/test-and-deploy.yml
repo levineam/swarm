@@ -1,0 +1,59 @@
+name: Test and Deploy Feed Generator
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'swarm-feed-generator/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'swarm-feed-generator/**'
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  test:
+    name: Test Feed Generator
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: swarm-feed-generator/feed-generator
+        
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'yarn'
+          cache-dependency-path: 'swarm-feed-generator/feed-generator/yarn.lock'
+          
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+        
+      - name: Run linter
+        run: yarn lint
+        
+      - name: Run tests
+        run: yarn test
+        
+      - name: Check TypeScript compilation
+        run: yarn tsc --noEmit
+  
+  deploy:
+    name: Deploy to Render
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Trigger Render Deploy Hook
+        run: |
+          curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          echo "Deployment triggered on Render"
+          
+      - name: Log deployment
+        run: echo "Feed Generator deployment triggered at $(date)" 
