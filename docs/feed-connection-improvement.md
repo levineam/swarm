@@ -306,19 +306,35 @@ jobs:
   - Renamed the auto-add-community-posts.yml file to auto-add-community-posts.yml.disabled
   - This preserves the file for reference but prevents it from running
   - The hourly script will no longer automatically add posts to the feed
-- Established a monitoring plan:
-  - Set up a monitoring period of 48 hours to ensure the feed works correctly
-  - Will check the feed regularly to verify that posts from community members appear
-  - Will review logs for any errors or issues
-  - Will document the results of the monitoring period
+- Monitored the feed for 48 hours:
+  - Observed that the feed remains empty
+  - Discovered that the firehose health endpoint is not accessible
+  - Found that users are experiencing a "could not resolve identity" error
+  - Identified potential issues with DID resolution and firehose connection
 
-**Status: In Progress** - Monitoring phase underway
+**Status: Completed with Issues** - Monitoring revealed new problems that need to be addressed in Step 7
+
+---
+
+**Step 7: Resolve DID Identity Issues**
+
+**Problem**: After removing manual workarounds, users are experiencing a "could not resolve identity: did:web:swarm-feed-generator.onrender.com" error, and the feed remains empty.
+
+**Actions**:
+
+* **Investigate DID Mismatch**: Examine the DID configuration to identify inconsistencies between the feed generator's DID and the feed URIs.
+* **Fix DID Resolution**: Update the DID document or feed URIs to ensure consistent identity references.
+* **Verify Firehose Connection**: Ensure the firehose health endpoint is properly implemented and accessible.
+* **Debug Feed Algorithm**: Confirm that the community members list is correctly populated and that posts are being properly indexed.
+* **Deploy and Test**: Deploy the fixes and verify that the feed is working correctly.
+
+**Outcome**: A fully functional feed generator with proper DID resolution and reliable firehose connection.
 
 ---
 
 **Conclusion**
 
-By completing these steps, the Swarm Feed Generator has become a reliable, scalable service. We fixed the feed algorithm and firehose connection, enhanced the infrastructure with better database and monitoring solutions, automated processes, and removed manual workarounds. This ensures the platform serves the Swarm Community effectively while being ready for growth.
+The Swarm Feed Generator has undergone significant improvements through our step-by-step approach. While we've made substantial progress in fixing the feed algorithm, enhancing the firehose connection, optimizing the database, implementing logging and monitoring, setting up automated testing and deployment, and removing manual workarounds, we've identified additional issues with DID resolution that need to be addressed.
 
 The key improvements include:
 1. Corrected feed algorithm with proper filtering and testing
@@ -328,4 +344,6 @@ The key improvements include:
 5. Set up automated testing and deployment
 6. Removed manual workarounds for a fully automated system
 
-These changes have transformed the Swarm Feed Generator into a robust, maintainable, and scalable service that can reliably serve the community's needs.  
+However, our monitoring has revealed that there are still issues with DID resolution and possibly the firehose connection. These issues will be addressed in Step 7 to ensure that the Swarm Feed Generator becomes a fully reliable and self-sustaining service.
+
+The next phase of our improvement plan will focus on resolving these identity issues and ensuring that the feed generator can properly serve the Swarm community without manual intervention.  
