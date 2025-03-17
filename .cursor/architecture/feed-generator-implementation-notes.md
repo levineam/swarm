@@ -23,6 +23,146 @@ The feed generator is built using Node.js and Express, and it uses the AT Protoc
 - **Update (March 19, 2025)**: We have upgraded the feed generator service to a paid tier on Render, which eliminates hibernation issues and provides persistent storage. This has significantly improved the reliability of the feed generator, ensuring that the firehose subscription remains stable and posts are properly indexed. We've also implemented a GitHub Actions workflow to run the `auto-add-community-posts.js` script hourly as a backup mechanism to ensure posts appear in the feed even if there are issues with the feed algorithm.
 - **Update (March 20, 2025)**: We have confirmed that the feed generator is now reliably indexing posts from community members. The admin endpoint for manually adding posts to the feed (`/admin/update-feed`) has proven to be an effective tool for ensuring posts appear in the feed. We've documented the process for using this endpoint in the troubleshooting guide and created scripts to automate post addition. The upgrade to a paid tier on Render has eliminated the hibernation and database persistence issues that were previously affecting the service.
 
+## DID Resolution and Feed Reliability Implementation Plan
+
+Based on our analysis of the current issues, we've developed a comprehensive step-by-step plan to resolve the DID resolution errors and improve feed reliability. This plan follows the Step-by-Step Execution Workflow methodology for systematic implementation.
+
+### Step 1: Fix DID Resolution Issues
+
+**Problem**: Users are experiencing "could not resolve identity: did:web:swarm-feed-generator.onrender.com" errors when trying to access the feed.
+
+**Actions**:
+
+1. Run the diagnostic script to check feed URIs:
+   ```bash
+   ./scripts/check-feed-uris.js
+   ```
+
+2. Fix code inconsistencies in the feed generator:
+   - Update `describe-generator.ts` to use `ctx.cfg.serviceDid` instead of `ctx.cfg.publisherDid`:
+     ```typescript
+     const feeds = Object.keys(algos).map((shortname) => ({
+       uri: AtUri.make(
+         ctx.cfg.serviceDid,  // Use serviceDid, not publisherDid
+         'app.bsky.feed.generator',
+         shortname,
+       ).toString(),
+     }))
+     ```
+   - Modify `feed-generation.ts` to accept both service and publisher DIDs for backward compatibility:
+     ```typescript
+     if (
+       (feedUri.hostname !== ctx.cfg.serviceDid && feedUri.hostname !== ctx.cfg.publisherDid) ||
+       feedUri.collection !== 'app.bsky.feed.generator' ||
+       !algo
+     ) {
+       // handle error
+     }
+     ```
+
+3. Deploy the fixes to Render:
+   - Commit and push changes to GitHub
+   - Verify that Render automatically deploys the updated code
+
+4. Update the feed record using the `publishFeedGen.ts` script to ensure consistency:
+   ```bash
+   npx ts-node scripts/publishFeedGen.ts
+   ```
+
+**Expected Outcome**: The "could not resolve identity" error should be resolved, and users should be able to access the feed in the Bluesky app.
+
+### Step 2: Address GitHub Action Failures
+
+**Problem**: The "Auto-Add Community Posts" GitHub Action is failing with npm dependency installation errors.
+
+**Actions**:
+
+1. Review the failing GitHub Action:
+   - Examine the `auto-add-community-posts.yml` file
+   - Identify the specific npm dependency issues
+
+2. Update the GitHub Action:
+   - Since we're planning to phase out this manual workaround, rename or disable the file:
+     ```bash
+     git mv .github/workflows/auto-add-community-posts.yml .github/workflows/auto-add-community-posts.yml.disabled
+     ```
+   - Create an issue in the repository documenting this change
+
+3. For short-term reliability (if needed):
+   - Update the workflow file to use a specific Node.js version
+   - Add a package-lock.json file to ensure consistent dependencies
+
+**Expected Outcome**: The failing GitHub Action should be properly disabled or fixed, with clear documentation about the change.
+
+### Step 3: Ensure Firehose Connection Reliability
+
+**Problem**: The firehose connection may be unstable, causing posts to not appear in the feed.
+
+**Actions**:
+
+1. Verify the firehose health endpoint:
+   ```bash
+   curl https://swarm-feed-generator.onrender.com/health/firehose
+   ```
+
+2. Implement or update the firehose monitoring script:
+   - Ensure `track-firehose-cursor.js` is properly configured
+   - Set up regular monitoring to track firehose connection status
+
+3. Review reconnection logic in the feed generator:
+   - Verify that exponential backoff is correctly implemented
+   - Check cursor tracking for proper resumption after disconnection
+   - Ensure proper error handling and logging
+
+**Expected Outcome**: The firehose connection should be stable and reliable, with proper monitoring and reconnection logic.
+
+### Step 4: Comprehensive Testing
+
+**Problem**: We need to verify that all fixes are working correctly.
+
+**Actions**:
+
+1. Test DID resolution:
+   - Run the diagnostic script to check feed URIs
+   - Make sample requests to the feed generator to verify that both service DID and publisher DID work
+   - Check if the "could not resolve identity" error is resolved in the Bluesky app
+
+2. Validate feed content:
+   - Ensure posts are being indexed from the firehose
+   - Verify that community member posts appear in the feed
+   - Check if the feed algorithm correctly filters posts
+
+3. Monitor service stability:
+   - Set up regular health checks for the service
+   - Monitor the firehose connection status
+   - Track database statistics to ensure data is being properly stored
+
+**Expected Outcome**: All components of the feed generator should be working correctly, with no errors and proper feed content.
+
+### Step 5: Documentation and Long-term Planning
+
+**Problem**: We need to document the changes and plan for long-term stability.
+
+**Actions**:
+
+1. Update documentation:
+   - Add a new section to the troubleshooting guide about DID resolution issues
+   - Document the changes made to fix the issues
+   - Provide guidance for future maintenance
+
+2. Create a long-term plan:
+   - Consider migrating to PostgreSQL for better persistence
+   - Enhance the CI/CD pipeline
+   - Improve code quality and testing
+   - Evaluate Render service tier needs
+
+3. Commit all changes and create a summary pull request:
+   - Include detailed descriptions of all changes
+   - Reference related issues
+   - Provide testing instructions
+
+**Expected Outcome**: Comprehensive documentation and a clear plan for long-term stability and maintenance.
+
 ## Domain Usage Guidelines
 
 To maintain consistency and proper functionality, we follow these guidelines for domain usage:
@@ -418,189 +558,67 @@ Users reported that their posts were not appearing in the Swarm Community feed, 
    - Implement query optimizations
    - Consider database maintenance tasks
 
-## Reference Information
+### 3. DID and Feed URI Consistency Issues
 
-### Environment Variable Configuration
+#### Challenge
+After resolving the DID document configuration, we encountered a subtle but critical issue where users were still experiencing "could not resolve identity" errors when trying to access the feed.
 
-```
-# Development (Local)
-PORT=3000
-FEEDGEN_HOSTNAME=localhost:3000
-FEEDGEN_LISTENHOST=0.0.0.0
-FEEDGEN_PUBLISHER_DID=did:plc:ouadmsyvsfcpkxg3yyz4trqi
-FEEDGEN_LABELS_ENABLED=false
-FEEDGEN_SERVICE_DID=did:web:localhost:3000
-FEEDGEN_SUBSCRIPTION_ENDPOINT=wss://bsky.network
-DATABASE_URL=sqlite:swarm-feed.db
+#### Root Causes
+1. **DID Mismatch in Feed URIs**: The feed URIs in the `describeFeedGenerator` response were using the publisher DID (`did:plc:ouadmsyvsfcpkxg3yyz4trqi`), while the response itself was using the service DID (`did:web:swarm-feed-generator.onrender.com`).
+2. **Feed URI Construction**: The code in `describe-generator.ts` was using `ctx.cfg.publisherDid` instead of `ctx.cfg.serviceDid` when constructing feed URIs.
+3. **Feed URI Handling in Client**: The client was trying to resolve feed URIs with the service DID, but the feed generator was only accepting URIs with the publisher DID.
+4. **Feed Record Registration**: The feed record registered with the AT Protocol was using the incorrect DID for feed URIs.
 
-# Production (Render.com)
-PORT=10000
-FEEDGEN_HOSTNAME=swarm-feed-generator.onrender.com
-FEEDGEN_LISTENHOST=0.0.0.0
-FEEDGEN_PUBLISHER_DID=did:plc:ouadmsyvsfcpkxg3yyz4trqi
-FEEDGEN_LABELS_ENABLED=false
-FEEDGEN_SERVICE_DID=did:web:swarm-feed-generator.onrender.com
-FEEDGEN_SUBSCRIPTION_ENDPOINT=wss://bsky.network
-DATABASE_URL=sqlite:swarm-feed.db
-```
+#### Attempted Solutions
+1. **Code Analysis and Consistency Check**:
+   - Conducted a systematic review of all code that constructs or handles feed URIs
+   - Identified the inconsistency in `describe-generator.ts` where feed URIs were constructed with the publisher DID
 
-### Important URLs
+2. **Code Updates**:
+   - Updated `describe-generator.ts` to use `ctx.cfg.serviceDid` consistently for feed URIs:
+     ```typescript
+     const didToUse = ctx.cfg.serviceDid;
+     
+     const feeds = Object.keys(algos).map((shortname) => ({
+       uri: AtUri.make(
+         didToUse,
+         'app.bsky.feed.generator',
+         shortname,
+       ).toString(),
+     }))
+     ```
+   - Modified `feed-generation.ts` to accept both service and publisher DIDs for backward compatibility:
+     ```typescript
+     if (
+       (feedUri.hostname !== ctx.cfg.serviceDid && feedUri.hostname !== ctx.cfg.publisherDid) ||
+       feedUri.collection !== 'app.bsky.feed.generator' ||
+       !algo
+     ) {
+       // Error handling
+     }
+     ```
+   - Updated `publishFeedGen.ts` to use the service DID consistently for feed URIs in the record
 
-#### Swarm Social (Client Application)
-- Main Application: `https://swarm-social.onrender.com`
+3. **Feed Record Update**:
+   - Re-ran the `publishFeedGen.ts` script to update the feed record with the correct feed URIs
+   - Verified that the updated feed record contained URIs with the service DID
 
-#### Swarm Feed Generator
-- Feed Generator Service: `https://swarm-feed-generator.onrender.com`
-- Root Path (Landing Page): `https://swarm-feed-generator.onrender.com/`
-- DID Document URL: `https://swarm-feed-generator.onrender.com/.well-known/did.json`
-- Alternative DID Document URL: `https://swarm-feed-generator.onrender.com/did.json`
-- Debug Info: `https://swarm-feed-generator.onrender.com/debug`
-- Health Check: `https://swarm-feed-generator.onrender.com/health`
-- XRPC Test Endpoint: `https://swarm-feed-generator.onrender.com/xrpc-test`
-- Feed URI: `at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.generator/swarm-community`
-- Admin Endpoints:
-  - Stats: `https://swarm-feed-generator.onrender.com/admin/stats`
-  - Update Feed: `https://swarm-feed-generator.onrender.com/admin/update-feed`
-- GitHub Actions Workflow: `.github/workflows/auto-add-community-posts.yml`
+4. **Diagnostic Tools**:
+   - Created a new `check-feed-uris.js` script to verify that feed URIs are consistent with the service DID
+   - The script tests both the `describeFeedGenerator` endpoint and the `getFeedSkeleton` endpoint with different DIDs
+   - This helps diagnose issues with DID mismatches in feed URIs
 
-### Key Files
+#### Lessons Learned
+1. **DID Consistency is Critical**: Maintaining consistent use of DIDs across all components is essential for proper resolution and functionality.
+2. **Multiple Compatibility Paths**: For backward compatibility, it's helpful to accept both old and new DID patterns while transitioning.
+3. **Feed URI Construction**: When constructing feed URIs, always use the service DID, not the publisher DID.
+4. **Testing with Multiple DIDs**: Test endpoints with both DIDs to ensure proper functionality during transitions.
+5. **Feed Record Updates**: After changing DID handling in code, the feed record must be updated to match the new pattern.
+6. **AT Protocol Resolution**: The AT Protocol resolver expects consistency between the DID used in the response and the DIDs used in feed URIs.
 
-- `src/server.ts`: Contains Express server setup and static file middleware
-- `src/did-server.ts`: Dedicated server for serving the DID document with robust error handling
-- `src/index.ts`: Main entry point that starts both the feed generator and DID server
-- `src/well-known.ts`: Handles serving the DID document
-- `scripts/copy-did-document.js`: Post-build script for copying the DID document
-- `scripts/deploy-did-document.js`: Script to deploy the DID document to the public directory
-- `scripts/ensure-did-document.js`: Script to ensure the DID document exists at build and startup time
-- `scripts/update-did-document.js`: Script to update the DID document with the correct hostname
-- `scripts/check-feed-generator-env.js`: Script to check the feed generator's environment variables
-- `scripts/check-firehose-subscription.js`: Script to check if the feed generator is properly subscribing to the firehose
-- `scripts/check-feed-database.js`: Script to check if posts are being stored in the database
-- `scripts/restart-feed-generator.js`: Script to restart the feed generator service
-- `scripts/fix-feed-generator-database.js`: Script to generate SQL statements to manually add posts to the database
-- `scripts/create-test-post.js`: Script to create a test post to verify if it gets indexed
-- `scripts/test-feed-indexing.js`: Script to test if the feed generator is properly indexing posts
-- `scripts/keep-service-active.js`: Script to periodically ping the service to prevent hibernation
-- `scripts/check-feed-algorithm.js`: Script to check if the feed algorithm is working correctly
-- `scripts/add-posts-to-feed.js`: Script to manually add posts to the feed using the admin endpoint
-- `scripts/auto-add-community-posts.js`: Script to automatically find and add recent community posts to the feed
-- `.github/workflows/auto-add-community-posts.yml`: GitHub Actions workflow to run the auto-add-community-posts.js script hourly
-- `docs/feed-generator-troubleshooting.md`: Comprehensive troubleshooting guide for the feed generator
-- `.cursor/instructions/feed-indexing-troubleshooting-guide.md`: Detailed guide for diagnosing and fixing feed indexing issues
-- `.cursor/instructions/feed-indexing-troubleshooting-log.md`: Log of past troubleshooting sessions and their outcomes
-
-## Lessons Learned
-
-1. **DID Document Complexity**: Working with DIDs and the AT Protocol requires careful attention to detail in the DID document structure and deployment configuration.
-
-2. **Testing in Development vs. Production**: There are significant differences between local development and production deployment that need to be accounted for, particularly with path resolution and static file serving.
-
-3. **Express Middleware Configuration**: Proper configuration of Express middleware is crucial for serving static files in a TypeScript application deployed to production.
-
-4. **Build Process Integration**: Adding custom steps to the build process can solve deployment issues that are difficult to address through code alone.
-
-5. **Environment Variable Management**: Clear separation of environment variables for different environments (development vs. production) helps prevent confusion and deployment issues.
-
-6. **Logging and Debugging**: Detailed logging is invaluable for diagnosing issues in production environments where direct debugging is not possible.
-
-7. **Multiple Redundancy Layers**: Implementing multiple approaches to solve critical issues (like serving the DID document) provides resilience against unexpected deployment problems.
-
-8. **Port Configuration**: Always use the PORT environment variable provided by the hosting platform rather than hardcoding port values, as this can cause service endpoint mismatches.
-
-9. **Separation of Concerns**: Creating dedicated servers for specific functionality (like serving the DID document) can simplify debugging and maintenance.
-
-10. **Diagnostic Endpoints**: Adding diagnostic endpoints (like `/debug`) in production can provide valuable information for troubleshooting without requiring server restarts or log access.
-
-11. **AT Protocol Service Types**: The AT Protocol requires specific service types (e.g., "BskyFeedGenerator" instead of "AtprotoFeedGenerator") for proper resolution.
-
-12. **HTTP Headers Matter**: Proper Content-Type and Cache-Control headers are crucial for ensuring correct interpretation and preventing caching issues.
-
-13. **Client-Side Resolution**: Remember that errors might be occurring on the client side during resolution, not necessarily on the server side.
-
-14. **Methodical Testing**: When dealing with complex distributed systems like the AT Protocol, systematic testing of each component is essential to isolate and fix issues.
-
-15. **Domain Consistency**: When using a specific domain for a service, it's crucial to maintain consistency across all configuration files, environment variables, and code references.
-
-16. **Free Tier Limitations**: When using free tier services like Render, be aware of limitations such as service hibernation and non-persistent storage that can affect reliability.
-
-17. **Manual Intervention Options**: For services with potential reliability issues, having manual intervention options (like admin endpoints) is crucial for maintaining functionality.
-
-18. **Comprehensive Troubleshooting**: Creating detailed troubleshooting guides and diagnostic scripts helps users and developers quickly identify and fix common issues.
-
-19. **Service Maintenance**: For services on free tiers, implementing maintenance scripts (like keep-service-active.js) can help mitigate hibernation issues.
-
-20. **Paid Tier Benefits**: Upgrading to a paid tier on Render provides significant benefits for service reliability:
-    - No service hibernation ensures the firehose subscription remains stable
-    - Persistent storage prevents data loss during service restarts
-    - Better performance and reliability improve the overall user experience
-
-21. **Backup Mechanisms**: Implementing backup mechanisms (like automated post addition) ensures the service remains functional even if there are issues with the primary functionality.
-
-22. **Regular Testing**: Regular testing of critical components (like the feed algorithm) helps identify and fix issues before they affect users.
-
-23. **Documentation Updates**: Keeping documentation up-to-date with the latest changes and findings is crucial for maintaining the service over time.
-
-## Next Steps
-
-1. **Fix Remaining Endpoint Issues**:
-   - Update the privacy policy and terms of service URLs
-   - Fix the debug endpoint
-   - Ensure the DID document is properly served
-   - Implement proper error handling for the XRPC root endpoints
-
-2. **Monitor Service Stability**:
-   - Regularly check all endpoints to ensure they remain accessible
-   - Set up automated monitoring to alert on any issues
-   - Implement more robust error handling and logging
-
-3. **Update Client Integration**:
-   - Ensure the Swarm Social client is correctly configured to use the feed generator
-   - Test the feed integration from the client to verify it's working properly
-   - Monitor user feedback on the feed functionality
-
-4. **Documentation and Knowledge Transfer**:
-   - Update all documentation with the latest changes and configurations
-   - Create a troubleshooting guide for common issues
-   - Document the DID resolution process and configuration in detail
-
-5. **Performance Optimization**:
-   - Analyze the performance of the feed generator service
-   - Implement caching strategies for frequently accessed data
-   - Optimize database queries and indexing
-
-6. **User Experience Enhancements**:
-   - Add more detailed information to the landing page
-   - Create a dashboard for monitoring feed performance and usage
-   - Implement user feedback mechanisms for the feeds
-
-7. **Reliability Improvements**:
-   - Consider upgrading to a paid Render tier for better reliability
-   - Implement database backup mechanisms
-   - Enhance the firehose subscription with more robust reconnection logic
-   - Set up monitoring to detect and alert on service issues
-
-8. **Admin Interface Enhancement**:
-   - Expand the admin endpoints with more functionality
-   - Create a simple web interface for the admin endpoints
-   - Add authentication to the admin endpoints for security
-   - Implement more detailed logging for admin actions
-
-9. **Feed Algorithm Improvement**:
-   - Investigate and fix issues with the feed algorithm not properly filtering posts from community members
-   - Add more detailed logging to the feed algorithm to help diagnose issues
-   - Implement more sophisticated filtering options based on user preferences
-
-10. **Monitoring Enhancement**:
-    - Set up comprehensive monitoring for the feed generator service
-    - Create alerts for issues with the feed algorithm or firehose subscription
-    - Implement regular health checks to ensure the service remains operational
-
-11. **Performance Optimization**:
-    - Now that we have persistent storage, optimize the database for better performance
-    - Implement caching strategies for frequently accessed data
-    - Optimize query performance for the feed algorithm
-
-12. **User Experience Improvement**:
-    - Enhance the landing page with more detailed information about the feeds
-    - Add user feedback mechanisms for the feeds
-    - Implement more customization options for the feeds
+#### Impact
+Resolving this issue:
+1. Eliminated the "could not resolve identity" errors for users
+2. Made the feed accessible in the Bluesky app
+3. Ensured consistent DID usage throughout the system
+4. Improved understanding of how DID resolution works in the AT Protocol
