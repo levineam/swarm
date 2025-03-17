@@ -19,6 +19,46 @@ This document focuses specifically on debugging the Swarm Feed Generator. It pro
 3. **Limited Community Members**:
    - The `SWARM_COMMUNITY_MEMBERS` array only contains one DID, limiting potential posts
 
+## Step-by-Step Execution
+
+### Step 1: Create and Track a Test Post
+
+1. **Create a Test Post**:
+   - Create a post from the account matching the DID in `SWARM_COMMUNITY_MEMBERS` (currently `did:plc:ouadmsyvsfcpkxg3yyz4trqi`)
+   - Include unique, identifiable content (e.g., "Test post for Swarm feed debugging #swarmtest")
+   - Note the post's URI and timestamp
+
+2. **Track the Test Post**:
+   - Check if the post appears in the firehose events (through logs)
+   - Verify if the post is being stored in the database
+   - Test if the post is returned by the feed algorithm
+   - This gives us a specific data point to track through the entire system
+
+#### Execution Summary
+- Created `check-test-post.js` script to verify if a specific post exists in the database
+- Created `add-test-post.js` script to manually add a test post to the database, bypassing the firehose
+- Made both scripts executable with `chmod +x`
+- Updated the progress tracking table with our work
+- Committed all changes to git with a descriptive message
+
+These diagnostic tools will help us isolate whether the issue is with:
+- The firehose subscription not receiving or processing posts
+- The database not storing posts correctly
+- The feed algorithm not retrieving posts properly
+
+**Done**
+
+### Step 2: Implement Firehose Health Endpoint
+
+1. **Implement the `/health/firehose` endpoint**:
+   - Add the endpoint to `src/server.ts` as described in the short-term solutions
+   - Deploy the changes
+   - Test the endpoint to verify it returns the correct status
+
+2. **Investigate Firehose Implementation**:
+   - Review `FirehoseSubscriptionBase` class in `src/util/subscription.ts` for connection management
+   - Verify that the firehose subscription is started in `FeedGenerator.start()`
+
 ## Diagnostic Approach
 
 ### 0. Create and Track a Test Post (Recommended First Step)
