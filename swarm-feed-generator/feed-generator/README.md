@@ -85,6 +85,12 @@ The Swarm Feed Generator has been enhanced with several improvements to make it 
 - Enhanced error handling and recovery mechanisms
 - Optimized database connections and query patterns
 
+### 7. DID Configuration and Resolution
+- Ensured consistency between service DID and feed URIs
+- Fixed DID resolution issues by using the same DID for both service identification and feed URIs
+- Added validation to prevent mismatches between service DID and publisher DID
+- Improved error handling for DID resolution failures
+
 ## Development
 
 ### Prerequisites
@@ -203,3 +209,25 @@ To implement a topical feed, you might filter the algorithm for posts and pass t
 
 - [Python](https://github.com/MarshalX/bluesky-feed-generator) - [@MarshalX](https://github.com/MarshalX)
 - [Ruby](https://github.com/mackuba/bluesky-feeds-rb) - [@mackuba](https://github.com/mackuba)
+
+## Troubleshooting
+
+### DID Resolution Errors
+If you encounter DID resolution errors in the Bluesky interface, check the following:
+
+1. **DID Consistency**: Ensure that the service DID (`FEEDGEN_SERVICE_DID`) is used consistently in both the feed generator configuration and the feed URIs. The feed URIs in the `describeFeedGenerator` response should use the same DID as the service DID.
+
+2. **Feed Registration**: Verify that the feed is registered with the correct DID. You can check this by running the `publishFeedGen.ts` script with the correct DID values.
+
+3. **Health Check**: Use the `/health/firehose` endpoint to verify that the firehose connection is active and processing events correctly.
+
+4. **Logs**: Check the logs at the `/logs` endpoint for any errors related to DID resolution or feed generation.
+
+### Empty Feed
+If your feed appears empty in the Bluesky interface, check the following:
+
+1. **Community Members**: Verify that the `SWARM_COMMUNITY_MEMBERS` array in `swarm-community-members.ts` contains valid DIDs.
+
+2. **Database**: Check the database to ensure that posts are being indexed correctly. You can use the `/debug` endpoint to view database statistics.
+
+3. **Firehose Connection**: Verify that the firehose connection is active and processing events. Use the `/health/firehose` endpoint to check the connection status.

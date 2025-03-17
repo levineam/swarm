@@ -3,12 +3,20 @@ import inquirer from 'inquirer'
 import { AtpAgent, BlobRef, AppBskyFeedDefs } from '@atproto/api'
 import fs from 'fs/promises'
 import { ids } from '../src/lexicon/lexicons'
+import { readFileSync } from 'fs'
+import path from 'path'
 
 const run = async () => {
   dotenv.config()
 
-  if (!process.env.FEEDGEN_SERVICE_DID && !process.env.FEEDGEN_HOSTNAME) {
-    throw new Error('Please provide a hostname in the .env file')
+  if (!process.env.FEEDGEN_SERVICE_DID) {
+    console.error('Missing FEEDGEN_SERVICE_DID environment variable')
+    process.exit(1)
+  }
+
+  if (!process.env.FEEDGEN_HOSTNAME) {
+    console.error('Missing FEEDGEN_HOSTNAME environment variable')
+    process.exit(1)
   }
 
   const answers = await inquirer
@@ -65,10 +73,10 @@ const run = async () => {
 
   const { handle, password, recordName, displayName, description, avatar, service, videoOnly } = answers
 
-  const feedGenDid =
-    process.env.FEEDGEN_SERVICE_DID ?? `did:web:${process.env.FEEDGEN_HOSTNAME}`
+  const feedGenDid = process.env.FEEDGEN_SERVICE_DID
 
-  // only update this if in a test environment
+  console.log('Using feed generator DID:', feedGenDid)
+
   const agent = new AtpAgent({ service: service ? service : 'https://bsky.social' })
   await agent.login({ identifier: handle, password})
 
@@ -89,18 +97,28 @@ const run = async () => {
     avatarRef = blobRes.data.blob
   }
 
+  const record = {
+    did: feedGenDid,
+    displayName: displayName,
+    description: description,
+    avatar: avatarRef,
+    createdAt: new Date().toISOString(),
+    contentMode: videoOnly ? AppBskyFeedDefs.CONTENTMODEVIDEO : AppBskyFeedDefs.CONTENTMODEUNSPECIFIED,
+    feeds: [
+      {
+        uri: `at://${feedGenDid}/app.bsky.feed.generator/whats-alf`,
+      },
+      {
+        uri: `at://${feedGenDid}/app.bsky.feed.generator/swarm-community`,
+      },
+    ],
+  }
+
   await agent.api.com.atproto.repo.putRecord({
     repo: agent.session?.did ?? '',
     collection: ids.AppBskyFeedGenerator,
     rkey: recordName,
-    record: {
-      did: feedGenDid,
-      displayName: displayName,
-      description: description,
-      avatar: avatarRef,
-      createdAt: new Date().toISOString(),
-      contentMode: videoOnly ? AppBskyFeedDefs.CONTENTMODEVIDEO : AppBskyFeedDefs.CONTENTMODEUNSPECIFIED,
-    },
+    record: record,
   })
 
   console.log('All done 🎉')

@@ -3,6 +3,7 @@ import { AtUri } from '@atproto/syntax'
 import algos from '../algos'
 import { AppContext } from '../config'
 import { Server } from '../lexicon'
+import logger from '../util/logger'
 
 // Helper function for logging
 function log(message: string) {
@@ -12,62 +13,56 @@ function log(message: string) {
 
 export default function describeGenerator(server: Server, ctx: AppContext) {
   // Add detailed logging to help debug the XRPC endpoint registration
-  log('=== REGISTERING describeFeedGenerator ENDPOINT ===')
+  logger.info('=== REGISTERING describeFeedGenerator ENDPOINT ===')
 
   // Log server object properties
-  log('Server object keys: ' + Object.keys(server).join(', '))
+  logger.info('Server object keys: ' + Object.keys(server).join(', '))
   if (server.app) {
-    log('Server.app object keys: ' + Object.keys(server.app).join(', '))
+    logger.info('Server.app object keys: ' + Object.keys(server.app).join(', '))
     if (server.app.bsky) {
-      log(
-        'Server.app.bsky object keys: ' +
-          Object.keys(server.app.bsky).join(', '),
-      )
+      logger.info('Server.app.bsky object keys: ' + Object.keys(server.app.bsky).join(', '))
       if (server.app.bsky.feed) {
-        log(
-          'Server.app.bsky.feed object keys: ' +
-            Object.keys(server.app.bsky.feed).join(', '),
-        )
+        logger.info('Server.app.bsky.feed object keys: ' + Object.keys(server.app.bsky.feed).join(', '))
         if (typeof server.app.bsky.feed.describeFeedGenerator === 'function') {
-          log('describeFeedGenerator endpoint exists on server.app.bsky.feed')
+          logger.info('describeFeedGenerator endpoint exists on server.app.bsky.feed')
         } else {
-          log(
-            'ERROR: describeFeedGenerator endpoint does NOT exist on server.app.bsky.feed',
-          )
+          logger.error('ERROR: describeFeedGenerator endpoint does NOT exist on server.app.bsky.feed')
         }
       } else {
-        log('ERROR: server.app.bsky.feed is undefined')
+        logger.error('ERROR: server.app.bsky.feed is undefined')
       }
     } else {
-      log('ERROR: server.app.bsky is undefined')
+      logger.error('ERROR: server.app.bsky is undefined')
     }
   } else {
-    log('ERROR: server.app is undefined')
+    logger.error('ERROR: server.app is undefined')
   }
 
   try {
     if (!server.app?.bsky?.feed?.describeFeedGenerator) {
-      log(
-        'ERROR: Cannot register describeFeedGenerator endpoint because it does not exist on server.app.bsky.feed',
-      )
+      logger.error('ERROR: Cannot register describeFeedGenerator endpoint because it does not exist on server.app.bsky.feed')
       return
     }
 
     server.app.bsky.feed.describeFeedGenerator(async () => {
-      log('describeFeedGenerator endpoint called')
-      log('Available algorithms: ' + Object.keys(algos).join(', '))
-      log('Publisher DID: ' + ctx.cfg.publisherDid)
-      log('Service DID: ' + ctx.cfg.serviceDid)
+      logger.info('describeFeedGenerator endpoint called')
+      logger.info('Available algorithms', { algorithms: Object.keys(algos) })
+      logger.info('Publisher DID', { publisherDid: ctx.cfg.publisherDid })
+      logger.info('Service DID', { serviceDid: ctx.cfg.serviceDid })
+
+      // IMPORTANT: Use the service DID for feed URIs to ensure consistency
+      // This ensures that the DID used in the response matches the DID used in the feed URIs
+      const didToUse = ctx.cfg.serviceDid
 
       const feeds = Object.keys(algos).map((shortname) => ({
         uri: AtUri.make(
-          ctx.cfg.publisherDid,
+          didToUse,
           'app.bsky.feed.generator',
           shortname,
         ).toString(),
       }))
 
-      log('Returning feeds: ' + JSON.stringify(feeds))
+      logger.info('Returning feeds', { feeds })
 
       return {
         encoding: 'application/json',
@@ -77,9 +72,9 @@ export default function describeGenerator(server: Server, ctx: AppContext) {
         },
       }
     })
-    log('Successfully registered describeFeedGenerator endpoint')
+    logger.info('Successfully registered describeFeedGenerator endpoint')
   } catch (error) {
-    log('Error registering describeFeedGenerator endpoint: ' + error)
+    logger.error('Error registering describeFeedGenerator endpoint', { error })
     throw error
   }
 }
