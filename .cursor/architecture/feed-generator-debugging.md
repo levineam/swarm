@@ -149,6 +149,7 @@ We'll use a systematic approach to diagnose and fix these issues:
 | DID Resolution | 2023-03-22 | Created middleware in `fix-did.ts` to ensure consistent DIDs | ⚠️ **Incorrect Approach** | Reverse approach - need to use account DID consistently, not service DID |
 | DID Resolution | 2023-03-23 | Received expert feedback identifying our misconception | **Insight Gained** | Update implementation to use account DID in describeFeedGenerator |
 | DID Resolution | 2023-03-24 | Implemented correct DID approach in `describe-generator.ts` and `server.ts` | **Done** | Deploy changes and verify with DID resolution test |
+| DID Resolution | 2023-03-25 | Deploy code changes to Render.com and update feed generator record | **In Progress** | Test DID resolution in client application |
 | Firehose Health | 2023-03-22 | Implemented health endpoint in `src/server.ts` | In Progress | Test the endpoint |
 
 ## Step-by-Step Execution Workflow
@@ -237,6 +238,56 @@ We'll use a systematic approach to diagnose and fix these issues:
 - The next step is to deploy these changes to production with "Clear build cache & deploy" option
 
 **Status**: **Done**
+
+### Step 3.5: Deploy DID Implementation Changes
+**Goal**: Deploy our code changes to production and update the feed generator record.
+
+#### Deployment Steps:
+
+1. **Deploy Code Changes to Render.com**:
+   - Log in to Render.com
+   - Navigate to the Swarm Feed Generator service
+   - Navigate to the "Settings" tab
+   - Click on "Clear build cache" to ensure all previous build artifacts are removed
+   - Return to the "Dashboard" tab
+   - Click "Manual Deploy" > "Clear build cache & deploy"
+   - Monitor the deployment logs for any errors
+
+2. **Verify Deployment**:
+   - Check if the `describeFeedGenerator` endpoint is correctly using the publisher DID:
+     ```
+     curl -s https://swarm-feed-generator.onrender.com/xrpc/app.bsky.feed.describeFeedGenerator | jq
+     ```
+   - Verify the cache-busting headers:
+     ```
+     curl -I https://swarm-feed-generator.onrender.com/xrpc/app.bsky.feed.describeFeedGenerator
+     ```
+   - Run the feed URI check script:
+     ```
+     node scripts/check-feed-uris.js
+     ```
+
+3. **Update Feed Generator Record in Bluesky**:
+   - Update the feed generator record to use the publisher DID:
+     ```
+     node scripts/updateFeedGenDid.js
+     ```
+   - Verify the update:
+     ```
+     node scripts/checkFeedRecord.js
+     ```
+
+4. **Test in Client Application**:
+   - Access the Swarm Social client application
+   - Try to view the Swarm Community feed
+   - Verify that the feed is resolved correctly without "could not resolve identity" errors
+
+**Current Status**: Our code changes have been committed but not yet deployed to production. According to our diagnostic checks:
+- The feed URIs in responses correctly use the publisher DID
+- The `did` field in responses still incorrectly uses the service DID
+- The feed generator record in Bluesky still incorrectly uses the service DID
+
+**Expected Result**: After completing this step, all DIDs should be consistently using the publisher DID as per AT Protocol specifications.
 
 ### Step 4: Implement firehose health endpoint
 **Goal**: Implement a proper health endpoint for checking the firehose connection status.
