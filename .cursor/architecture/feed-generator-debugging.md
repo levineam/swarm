@@ -148,6 +148,7 @@ We'll use a systematic approach to diagnose and fix these issues:
 | Empty Feed | 2023-03-22 | Created diagnostic scripts `check-test-post.js` and `add-test-post.js` | **Done** | Test post creation and database storage |
 | DID Resolution | 2023-03-22 | Created middleware in `fix-did.ts` to ensure consistent DIDs | ⚠️ **Incorrect Approach** | Reverse approach - need to use account DID consistently, not service DID |
 | DID Resolution | 2023-03-23 | Received expert feedback identifying our misconception | **Insight Gained** | Update implementation to use account DID in describeFeedGenerator |
+| DID Resolution | 2023-03-24 | Implemented correct DID approach in `describe-generator.ts` and `server.ts` | **Done** | Deploy changes and verify with DID resolution test |
 | Firehose Health | 2023-03-22 | Implemented health endpoint in `src/server.ts` | In Progress | Test the endpoint |
 
 ## Step-by-Step Execution Workflow
@@ -224,6 +225,18 @@ We'll use a systematic approach to diagnose and fix these issues:
    ```bash
    curl -s https://swarm-feed-generator.onrender.com/xrpc/app.bsky.feed.describeFeedGenerator | jq
    ```
+
+**Execution Summary**:
+- Updated `describe-generator.ts` to consistently use the account DID (publisher DID) for both the `did` field and feed URIs
+- Removed the incorrect `fixFeedUris` middleware from `server.ts` that was trying to replace publisher DIDs with service DIDs
+- Added cache-busting headers in `server.ts` to force revalidation with `Cache-Control: no-cache, no-store, must-revalidate`
+- Updated the direct test endpoint in `server.ts` to use the publisher DID in responses
+- Modified the root path handler in `server.ts` to display feed URIs with the publisher DID
+- Updated diagnostics scripts like `check-feed-uris.js` and `checkFeedRecord.js` to verify correct DID usage
+- Committed all changes to git with a clear message explaining the updated approach
+- The next step is to deploy these changes to production with "Clear build cache & deploy" option
+
+**Status**: **Done**
 
 ### Step 4: Implement firehose health endpoint
 **Goal**: Implement a proper health endpoint for checking the firehose connection status.
