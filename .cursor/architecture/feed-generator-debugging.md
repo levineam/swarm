@@ -40,11 +40,17 @@ This document focuses specifically on debugging the Swarm Feed Generator. It pro
 - Made both scripts executable with `chmod +x`
 - Updated the progress tracking table with our work
 - Committed all changes to git with a descriptive message
+- Identified and fixed a DID resolution issue by systematically checking feed generator record, DID document, and feed URIs
+- Confirmed feed is now correctly displaying in the Bluesky app
+- Created a test post with URI: `at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.post/3lknkc2zbqm26`
+- Successfully added the test post directly to the database
+- Verified the post exists in the database but does not appear in the feed
+- This suggests the issue is with the feed algorithm or how posts are retrieved from the database
 
-These diagnostic tools will help us isolate whether the issue is with:
-- The firehose subscription not receiving or processing posts
-- The database not storing posts correctly
-- The feed algorithm not retrieving posts properly
+These diagnostic steps helped us identify that:
+- The database is functioning correctly and can store posts
+- The DID resolution issue has been fixed
+- The feed algorithm may not be correctly retrieving posts from the database
 
 **Done**
 
@@ -326,4 +332,6 @@ These diagnostic tools will help us isolate whether the issue is with:
 | 2025-03-21 | Limited community members | Review of `SWARM_COMMUNITY_MEMBERS` | Found only one DID in the array | Add more community member DIDs |
 | 2025-03-21 | Database indexing | Checked feed algorithm implementation | Algorithm looks correct but no posts in DB | Test database directly and implement admin endpoints |
 | 2025-03-21 | Test post verification | Planning to create test post from authorized account | Pending | Create test post and track it through the system |
-| 2025-03-22 | Test post tools | Created diagnostic scripts | Created `check-test-post.js` and `add-test-post.js` to diagnose post indexing issues | Create a test post and use the scripts to verify database storage and feed retrieval | 
+| 2025-03-22 | Test post tools | Created diagnostic scripts | Created `check-test-post.js` and `add-test-post.js` to diagnose post indexing issues | Create a test post and use the scripts to verify database storage and feed retrieval |
+| 2025-03-22 | DID resolution issue | Systematically checked feed generator record, DID document and feed URIs | Feed now displays correctly in Bluesky app | Continue with Step 2 to implement firehose health endpoint |
+| 2025-03-22 | Test post tracking | Created and tracked a test post through the system | Post successfully added to database but not appearing in feed | Investigate feed algorithm implementation in Step 3 | 
