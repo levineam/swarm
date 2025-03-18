@@ -282,6 +282,41 @@ We'll use a systematic approach to diagnose and fix these issues:
    - Try to view the Swarm Community feed
    - Verify that the feed is resolved correctly without "could not resolve identity" errors
 
+#### Rollback Plan
+
+If issues occur after deployment:
+
+1. **Identify the issue**:
+   - Check the Render.com logs for any errors
+   - Run the diagnostic scripts to verify the current state
+
+2. **If DID inconsistency persists**:
+   - Review the deployed code to ensure changes were applied
+   - Check for any environment variables that might be overriding the code changes
+   - Verify the feed generator record was updated correctly
+
+3. **If necessary, roll back**:
+   - Revert to the previous commit
+   - Deploy with "Clear build cache & deploy"
+   - Document the issue encountered for further analysis
+
+#### Post-Deployment
+
+After successful deployment:
+
+1. Update the debugging documentation with the results
+2. Move on to the next steps in our debugging plan
+3. Monitor for any recurring issues
+
+#### Notes and Recommendations
+
+- **Client Caching**: Even after deployment, some clients might still cache the old responses. Users might need to:
+  - Clear their browser cache
+  - Restart the client application
+  - Wait for cache expiration (our cache-busting headers should help with this)
+
+- **DID Record Consistency**: Ensure the feed generator record is consistent with our implementation to avoid future issues.
+
 **Current Status**: Our code changes have been committed but not yet deployed to production. According to our diagnostic checks:
 - The feed URIs in responses correctly use the publisher DID
 - The `did` field in responses still incorrectly uses the service DID
