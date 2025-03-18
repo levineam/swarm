@@ -3,8 +3,8 @@ import cors from 'cors'
 import events from 'events'
 import express from 'express'
 import http from 'http'
+import { Server } from '@atproto/xrpc-server'
 
-import { createAdminRouter } from './admin'
 import { AppContext, Config, getDatabaseLocation } from './config'
 import { createDb, Database, migrateToLatest } from './db'
 import { createServer as createXrpcServer } from './lexicon'
@@ -12,18 +12,15 @@ import describeGenerator from './methods/describe-generator'
 import feedGeneration from './methods/feed-generation'
 import { FirehoseSubscription } from './subscription'
 import makeWellKnownRouter from './well-known'
+import logger, { getMemoryLogs } from './util/logger'
+import { fixFeedUris } from './middleware/fix-did'
 
 // Store logs in memory for debugging
-const logs: string[] = []
+// This is now handled by the logger module
+// const logs: string[] = []
 function log(message: string) {
-  const timestamp = new Date().toISOString()
-  const logMessage = `${timestamp} - ${message}`
-  console.log(logMessage)
-  logs.push(logMessage)
-  // Keep only the last 1000 log messages
-  if (logs.length > 1000) {
-    logs.shift()
-  }
+  // Use the Winston logger instead of console.log
+  logger.info(message)
 }
 
 export class FeedGenerator {
@@ -47,16 +44,13 @@ export class FeedGenerator {
 
   static create(cfg: Config) {
     log('=== CREATING SERVER ===')
-    log(
-      'Configuration: ' +
-        JSON.stringify({
-          port: cfg.port,
-          hostname: cfg.hostname,
-          serviceDid: cfg.serviceDid,
-          publisherDid: cfg.publisherDid,
-          databaseType: cfg.databaseUrl ? 'PostgreSQL' : 'SQLite',
-        }),
-    )
+    logger.info('Configuration', {
+      port: cfg.port,
+      hostname: cfg.hostname,
+      serviceDid: cfg.serviceDid,
+      publisherDid: cfg.publisherDid,
+      databaseType: cfg.databaseUrl ? 'PostgreSQL' : 'SQLite',
+    })
 
     const app = express()
     const dbLocation = getDatabaseLocation(cfg)
@@ -70,7 +64,12 @@ export class FeedGenerator {
         res: express.Response,
         next: express.NextFunction,
       ) => {
-        log(`${req.method} ${req.url}`)
+        logger.info(`HTTP Request`, { 
+          method: req.method, 
+          url: req.url,
+          ip: req.ip,
+          userAgent: req.get('user-agent')
+        })
         next()
       },
     )
@@ -78,60 +77,52 @@ export class FeedGenerator {
     app.use(cors())
     app.use(express.json())
 
+    // Add the fixFeedUris middleware early to ensure it catches all responses
+    app.use(fixFeedUris(cfg.serviceDid, cfg.publisherDid))
+
+    // Remove the admin router setup
     // Set up admin router
-    const adminRouter = createAdminRouter(db)
-    app.use('/admin', adminRouter)
+    // const adminRouter = createAdminRouter(db)
+    // app.use('/admin', adminRouter)
 
     // Add a logs endpoint for debugging
     app.get('/logs', (req, res) => {
-      // This is a simple implementation that returns recent logs
-      // In a production environment, you would want to implement proper log storage and retrieval
-      res.status(200).json({
-        message: 'This endpoint returns recent logs for debugging purposes',
-        environment: process.env.NODE_ENV,
-        logs: logs.slice(-100), // Return the last 100 logs
-        config: {
-          port: cfg.port,
-          hostname: cfg.hostname,
-          serviceDid: cfg.serviceDid,
-          publisherDid: cfg.publisherDid,
-        },
-      })
+      const logs = getMemoryLogs()
+      res.json({ logs })
     })
 
     // Health check endpoint
     app.get('/health', (req: express.Request, res: express.Response) => {
-      log('Health check called')
+      logger.info('Health check called')
       res.status(200).send('OK')
     })
 
     // Firehose health check endpoint
-    app.get(
-      '/health/firehose',
-      (req: express.Request, res: express.Response) => {
-        log('Firehose health check called')
-        const isConnected = firehose.isFirehoseConnected()
-        const lastCursor = firehose.getLastCursor()
-
-        if (isConnected) {
-          res.status(200).json({
-            status: 'connected',
-            lastCursor: lastCursor,
-            timestamp: new Date().toISOString(),
-          })
-        } else {
-          res.status(503).json({
-            status: 'disconnected',
-            lastCursor: lastCursor,
-            timestamp: new Date().toISOString(),
-          })
-        }
-      },
-    )
+    app.get('/health/firehose', (req: express.Request, res: express.Response) => {
+      logger.info('Firehose health check called')
+      const isConnected = firehose.isFirehoseConnected()
+      const lastCursor = firehose.getLastCursor()
+      
+      if (isConnected) {
+        logger.info('Firehose is connected', { lastCursor })
+        res.status(200).json({
+          status: 'connected',
+          lastCursor: lastCursor,
+          timestamp: new Date().toISOString()
+        })
+      } else {
+        logger.warn('Firehose is disconnected', { lastCursor })
+        res.status(503).json({
+          status: 'disconnected',
+          lastCursor: lastCursor,
+          timestamp: new Date().toISOString()
+        })
+      }
+    })
 
     // Debug endpoint
     app.get('/debug', (req: express.Request, res: express.Response) => {
-      log('Debug endpoint called')
+      logger.info('Debug endpoint called')
       res.status(200).json({
         message: 'Debug information',
         environment: process.env.NODE_ENV,
@@ -146,7 +137,7 @@ export class FeedGenerator {
 
     // XRPC test endpoint
     app.get('/xrpc-test', (req, res) => {
-      log('XRPC test endpoint called')
+      logger.info('XRPC test endpoint called')
       res.status(200).json({
         message: 'XRPC test endpoint',
         xrpcAvailable: true,
@@ -155,16 +146,16 @@ export class FeedGenerator {
 
     // Add a direct test endpoint for the XRPC endpoints
     app.get('/xrpc/app.bsky.feed.describeFeedGenerator', (req, res) => {
-      log('Direct test endpoint for describeFeedGenerator called')
+      logger.info('Direct test endpoint for describeFeedGenerator called')
       res.status(200).json({
         did: cfg.serviceDid,
         feeds: [
           {
-            uri: 'at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.generator/swarm-community',
+            uri: `at://${cfg.serviceDid}/app.bsky.feed.generator/swarm-community`,
             cid: 'bafyreihbvkwdpxqvvkxqjgvjlvvlvqvkxqvjvlvvlvqvkxqvjvlvvlvqvkxq',
           },
           {
-            uri: 'at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.generator/swarm-trending',
+            uri: `at://${cfg.serviceDid}/app.bsky.feed.generator/swarm-trending`,
             cid: 'bafyreihbvkwdpxqvvkxqjgvjlvvlvqvkxqvjvlvvlvqvkxqvjvlvvlvqvkxq',
           },
         ],
@@ -185,35 +176,34 @@ export class FeedGenerator {
     app.use(wellKnownRouter)
 
     // Create XRPC server
-    log('Creating XRPC server...')
+    logger.info('Creating XRPC server...')
     try {
-      const xrpcServer = createXrpcServer({})
-      log('XRPC server created successfully')
-      log('XRPC server object keys: ' + Object.keys(xrpcServer).join(', '))
+      const xrpcServer = createXrpcServer()
+      logger.info('XRPC server created successfully')
+      logger.debug('XRPC server object keys', { keys: Object.keys(xrpcServer).join(', ') })
 
       if (xrpcServer.app) {
-        log(
-          'XRPC server.app object keys: ' +
-            Object.keys(xrpcServer.app).join(', '),
-        )
+        logger.debug('XRPC server.app object keys', { 
+          keys: Object.keys(xrpcServer.app).join(', ') 
+        })
+        
         if (xrpcServer.app.bsky) {
-          log(
-            'XRPC server.app.bsky object keys: ' +
-              Object.keys(xrpcServer.app.bsky).join(', '),
-          )
+          logger.debug('XRPC server.app.bsky object keys', { 
+            keys: Object.keys(xrpcServer.app.bsky).join(', ') 
+          })
+          
           if (xrpcServer.app.bsky.feed) {
-            log(
-              'XRPC server.app.bsky.feed object keys: ' +
-                Object.keys(xrpcServer.app.bsky.feed).join(', '),
-            )
+            logger.debug('XRPC server.app.bsky.feed object keys', { 
+              keys: Object.keys(xrpcServer.app.bsky.feed).join(', ') 
+            })
           } else {
-            log('ERROR: XRPC server.app.bsky.feed is undefined')
+            logger.error('XRPC server.app.bsky.feed is undefined')
           }
         } else {
-          log('ERROR: XRPC server.app.bsky is undefined')
+          logger.error('XRPC server.app.bsky is undefined')
         }
       } else {
-        log('ERROR: XRPC server.app is undefined')
+        logger.error('XRPC server.app is undefined')
       }
 
       // Create AppContext
@@ -224,21 +214,21 @@ export class FeedGenerator {
       }
 
       // Register methods
-      log('Registering XRPC methods...')
+      logger.info('Registering XRPC methods...')
       feedGeneration(xrpcServer, ctx)
       describeGenerator(xrpcServer, ctx)
-      log('XRPC methods registered successfully')
+      logger.info('XRPC methods registered successfully')
 
       // Mount XRPC routes
-      log('Mounting XRPC routes...')
+      logger.info('Mounting XRPC routes...')
       if (xrpcServer.xrpc && xrpcServer.xrpc.router) {
         app.use(xrpcServer.xrpc.router)
-        log('XRPC routes mounted successfully')
+        logger.info('XRPC routes mounted successfully')
       } else {
-        log('ERROR: xrpcServer.xrpc.router is undefined')
+        logger.error('xrpcServer.xrpc.router is undefined')
       }
     } catch (err) {
-      log('Error creating XRPC server: ' + err)
+      logger.error('Failed to create XRPC server', { error: err })
       console.error('Failed to create XRPC server:', err)
     }
 
@@ -246,23 +236,41 @@ export class FeedGenerator {
   }
 
   async start(): Promise<http.Server> {
-    await migrateToLatest(this.db)
+    try {
+      await migrateToLatest(this.db)
+      logger.info('Database migrations completed successfully')
+    } catch (err) {
+      logger.error('Database migration failed', { error: err })
+      throw err
+    }
+    
     this.firehose.run(this.cfg.subscriptionReconnectDelay)
+    logger.info('Firehose subscription started')
 
     // Use the PORT environment variable provided by Render.com if available
     const port = process.env.PORT
       ? parseInt(process.env.PORT, 10)
       : this.cfg.port
 
-    log(`Starting server on port ${port}`)
+    logger.info(`Starting server on port ${port}`)
 
     this.server = this.app.listen(port, this.cfg.listenhost)
+    
+    // Set up error handling for the server
+    this.server.on('error', (error) => {
+      logger.error('Server error', { error })
+    })
+    
     await events.once(this.server, 'listening')
-    log(`Server is now listening on port ${port}`)
+    logger.info(`Server is now listening on port ${port}`)
 
     // Add root path handler
     this.app.get('/', (req, res) => {
-      console.log('Root path called')
+      logger.info('Root path called')
+      
+      // Use the service DID in the HTML content
+      const serviceDid = this.cfg.serviceDid
+      
       res.status(200).send(`
         <!DOCTYPE html>
         <html lang="en">
@@ -328,12 +336,12 @@ export class FeedGenerator {
             <div class="feed-item">
               <div class="feed-title">Swarm Community</div>
               <p>A feed of posts from Swarm community members</p>
-              <div class="feed-uri">at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.generator/swarm-community</div>
+              <div class="feed-uri">at://${serviceDid}/app.bsky.feed.generator/swarm-community</div>
             </div>
             <div class="feed-item">
               <div class="feed-title">Swarm Trending</div>
               <p>A feed of trending posts from the Swarm community</p>
-              <div class="feed-uri">at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.generator/swarm-trending</div>
+              <div class="feed-uri">at://${serviceDid}/app.bsky.feed.generator/swarm-trending</div>
             </div>
           </div>
           
