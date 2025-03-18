@@ -9,15 +9,16 @@
   "scripts": {
     "publishFeed": "ts-node scripts/publishFeedGen.ts",
     "unpublishFeed": "ts-node scripts/unpublishFeedGen.ts",
-    "start": "node scripts/ensure-did-document.js && node scripts/check-render-deployment.js && node scripts/modify-server-on-startup.js && ts-node src/index.ts",
+    "start": "node scripts/ensure-did-document.js && node scripts/check-render-deployment.js && node scripts/modify-server-on-startup.js && node scripts/init-db.js && ts-node src/index.ts",
     "build": "tsc",
-    "postbuild": "node scripts/copy-did-document.js && node scripts/ensure-did-document.js && node scripts/update-did-document.js && node scripts/add-xrpc-endpoints.js",
+    "postbuild": "node scripts/copy-did-document.js && node scripts/ensure-did-document.js && node scripts/update-did-document.js && node scripts/add-xrpc-endpoints.js && node scripts/init-db.js",
     "check-deployment": "node scripts/check-render-deployment.js",
     "check-deployment-status": "node scripts/check-deployment-status.js",
     "check-server": "node scripts/check-server-js.js",
     "update-did": "node scripts/update-did-document.js",
     "test": "jest",
-    "lint": "tsc --noEmit && eslint 'src/**/*.ts' 'tests/**/*.ts'"
+    "lint": "tsc --noEmit && eslint 'src/**/*.ts' 'tests/**/*.ts'",
+    "init-db": "node scripts/init-db.js"
   },
   "dependencies": {
     "@atproto/api": "^0.13.35",
