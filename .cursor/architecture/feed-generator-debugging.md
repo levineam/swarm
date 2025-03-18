@@ -1,5 +1,94 @@
 # Feed Generator Debugging Guide
 
+## DID Resolution Issue
+
+### Issue Description
+- The Bluesky app displays an error: "could not resolve identity: did:web:swarm-feed-generator.onrender.com"
+- Even though the feed generator record exists and DID document seems correctly configured
+- This issue recurs periodically despite being temporarily fixed
+
+### Root Cause Analysis
+1. **Mismatched DIDs in Feed URIs**: 
+   - The feed URIs in the `describeFeedGenerator` response use the publisher DID (`did:plc:ouadmsyvsfcpkxg3yyz4trqi`) 
+   - Instead of consistently using the service DID (`did:web:swarm-feed-generator.onrender.com`)
+
+2. **Code vs. Production Discrepancy**:
+   - The code in `src/methods/describe-generator.ts` is correctly configured to use `ctx.cfg.serviceDid` for feed URIs
+   - But the deployed version still returns feed URIs with the publisher DID
+   - The reference implementation uses `ctx.cfg.publisherDid` instead of `ctx.cfg.serviceDid`
+
+3. **Configuration Verification**:
+   - Debug endpoint confirms both DIDs are correctly configured:
+     ```json
+     {
+       "config": {
+         "serviceDid": "did:web:swarm-feed-generator.onrender.com",
+         "publisherDid": "did:plc:ouadmsyvsfcpkxg3yyz4trqi"
+       }
+     }
+     ```
+
+### Temporary Fix
+Run the `updateFeedGenDid.js` script to update the feed generator record with the correct service DID:
+```bash
+node scripts/updateFeedGenDid.js
+```
+
+This fixes the issue temporarily but doesn't address the root cause, as the problem reappears periodically.
+
+### Permanent Solutions
+
+1. **Ensure Proper Deployment**:
+   - The code fix in `src/methods/describe-generator.ts` is correct, but we need to ensure it's properly deployed
+   - Use "Clear build cache & deploy" option in Render dashboard to force a clean deployment
+
+2. **Add a Validation Layer**:
+   - Implement middleware that validates DIDs in all responses before they're returned
+   - This would catch and fix any inconsistencies even if the underlying issue persists
+
+3. **Implement Auto-Correction at Startup**:
+   - Add code to the server startup process that verifies and corrects feed record DIDs
+   - This would effectively run the `updateFeedGenDid.js` script automatically on each restart
+
+4. **Improve Code Consistency**:
+   - Ensure all parts of the codebase use the same approach for constructing feed URIs
+   - Fix reference implementations that might be causing confusion
+
+5. **Add Monitoring and Alerts**:
+   - Implement regular checks to verify feed URI consistency 
+   - Set up alerts for when inconsistencies are detected
+
+### Diagnostic Steps Used
+
+1. Check DID document:
+   ```bash
+   curl https://swarm-feed-generator.onrender.com/.well-known/did.json | jq
+   ```
+
+2. Check feed generator record in Bluesky PDS:
+   ```bash
+   cd swarm-feed-generator/feed-generator && node scripts/checkFeedRecord.js
+   ```
+
+3. Verify DID and feed URI consistency:
+   ```bash
+   curl "https://swarm-feed-generator.onrender.com/xrpc/app.bsky.feed.describeFeedGenerator" | jq
+   ```
+
+4. Check feed with both DIDs:
+   ```bash
+   # With service DID
+   curl "https://swarm-feed-generator.onrender.com/xrpc/app.bsky.feed.getFeedSkeleton?feed=at://did:web:swarm-feed-generator.onrender.com/app.bsky.feed.generator/swarm-community"
+   
+   # With publisher DID
+   curl "https://swarm-feed-generator.onrender.com/xrpc/app.bsky.feed.getFeedSkeleton?feed=at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.generator/swarm-community"
+   ```
+
+5. Update the feed generator DID:
+   ```bash
+   node scripts/updateFeedGenDid.js
+   ```
+
 ## Overview
 
 This document focuses specifically on debugging the Swarm Feed Generator. It provides a systematic approach to diagnosing and fixing issues with the feed generator, particularly focused on the problem of posts not appearing in feeds despite successful DID resolution.
