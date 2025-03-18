@@ -1,10 +1,7 @@
 import { AppContext } from '../config'
 import { QueryParams } from '../lexicon/types/app/bsky/feed/getFeedSkeleton'
 import { SWARM_COMMUNITY_MEMBERS } from '../swarm-community-members'
-import { createChildLogger, logError } from '../util/logger'
-
-// Create a child logger for the swarm-community algorithm
-const feedLogger = createChildLogger('swarm-community')
+import { logger } from '../util/logger'
 
 // max 15 chars
 export const shortname = 'swarm-community'
@@ -13,12 +10,12 @@ export const handler = async (ctx: AppContext, params: QueryParams) => {
   const { limit, cursor } = params
   const db = ctx.db
 
-  feedLogger.info('Feed request received', {
+  logger.info('Feed request received', {
     limit,
     cursor: cursor || 'none',
   })
 
-  feedLogger.debug('Community members', {
+  logger.debug('Community members', {
     count: SWARM_COMMUNITY_MEMBERS.length,
     members: SWARM_COMMUNITY_MEMBERS,
   })
@@ -34,7 +31,7 @@ export const handler = async (ctx: AppContext, params: QueryParams) => {
           .execute()
           .then((rows) => rows.map((row) => row.creator))
 
-  feedLogger.info('Member DIDs for filtering', {
+  logger.info('Member DIDs for filtering', {
     count: memberDids.length,
   })
 
@@ -61,20 +58,20 @@ export const handler = async (ctx: AppContext, params: QueryParams) => {
       })
     }
 
-    feedLogger.debug('Executing query for posts from community members')
+    logger.debug('Executing query for posts from community members')
 
     const res = await builder.execute()
 
-    feedLogger.info('Query results', { count: res.length })
+    logger.info('Query results', { count: res.length })
 
     if (res.length > 0) {
-      feedLogger.debug('Sample posts', {
+      logger.debug('Sample posts', {
         samples: res
           .slice(0, 3)
           .map((p) => ({ uri: p.uri, creator: p.creator })),
       })
     } else {
-      feedLogger.warn('No posts found for the given criteria')
+      logger.warn('No posts found for the given criteria')
 
       try {
         // Additional diagnostic query to check if there are any posts in the database
@@ -83,7 +80,7 @@ export const handler = async (ctx: AppContext, params: QueryParams) => {
           .select(db.fn.count('uri').as('count'))
           .executeTakeFirst()
 
-        feedLogger.info('Database statistics', {
+        logger.info('Database statistics', {
           totalPosts: totalPosts?.count || 0,
         })
 
@@ -94,11 +91,11 @@ export const handler = async (ctx: AppContext, params: QueryParams) => {
           .select(db.fn.count('uri').as('count'))
           .executeTakeFirst()
 
-        feedLogger.info('Community posts statistics', {
+        logger.info('Community posts statistics', {
           communityPosts: communityPosts?.count || 0,
         })
       } catch (err) {
-        logError('Error running diagnostic queries', err)
+        logger.error('Error running diagnostic queries', { error: err instanceof Error ? err.message : String(err) })
       }
     }
 
@@ -117,7 +114,7 @@ export const handler = async (ctx: AppContext, params: QueryParams) => {
       feed,
     }
   } catch (err) {
-    logError('Error processing feed request', err)
+    logger.error('Error processing feed request', { error: err instanceof Error ? err.message : String(err) })
     throw err
   }
 }
