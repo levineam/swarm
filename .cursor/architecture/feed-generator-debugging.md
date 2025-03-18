@@ -6,39 +6,51 @@ This document outlines our debugging approach for the Swarm Feed Generator, spec
 
 1. **Empty Feed Issue**: The swarm-community feed is currently showing as empty when accessed via the API.
 2. **Firehose Connection Issues**: The health endpoint for the firehose returns a 404 error, suggesting the endpoint isn't properly implemented.
-3. **DID Resolution Issues**: ⚠️ **RECURRING** - The DID resolution issue ("could not resolve identity: did:web:swarm-feed-generator.onrender.com") continues to occur despite implementing the fix-did middleware. This suggests either deployment issues or a more complex underlying cause.
+3. **DID Resolution Issues**: ⚠️ **CRITICAL MISUNDERSTANDING IDENTIFIED** - We've been attempting to force everything to use the service DID, when according to AT Protocol specifications, the `describeFeedGenerator` response should use the account DID (`did:plc:ouadmsyvsfcpkxg3yyz4trqi`), not the service DID (`did:web:swarm-feed-generator.onrender.com`).
 4. **Limited Community Members**: The `SWARM_COMMUNITY_MEMBERS` array in `src/swarm-community-members.ts` only includes 1 entry, which might be limiting feed content.
+
+## Fundamental DID Issue Correction
+
+**Expert feedback reveals our critical mistake**: We've been trying to solve the DID resolution issue incorrectly.
+
+- **Current incorrect approach**:
+  - We've been trying to make everything use the service DID (`did:web:swarm-feed-generator.onrender.com`)
+  - Our middleware attempts to replace account DIDs with service DIDs
+
+- **Correct approach per AT Protocol specifications**:
+  - The `did` field in `describeFeedGenerator` should be the account's DID (`did:plc:ouadmsyvsfcpkxg3yyz4trqi`)
+  - Feed URIs should consistently use this same account DID
+  - The service DID is primarily for the DID document and service identification
+
+This insight completely changes our approach to fixing the DID resolution issue.
 
 ## Diagnostic Approach
 
 We'll use a systematic approach to diagnose and fix these issues:
 
-### Step 1: Address Recurring DID Resolution Issues
-**Goal**: Understand why the DID resolution issues continue to occur and implement a more robust fix.
+### Step 1: Correct DID Implementation
+**Goal**: Implement the correct DID usage according to AT Protocol specifications.
 
-#### Possible Causes:
-1. **Deployment Issues**: Our middleware changes may not be properly deployed to the production environment
-2. **Caching Issues**: PDS or client-side caching might be preventing the resolution from updating
-3. **Feed Generator Record**: The issue could be with the feed generator record in the Bluesky PDS, not our code
-
-#### Diagnostic Steps:
-1. Check if the fix-did middleware is actually running in production:
+#### Corrective Steps:
+1. Update the `describeFeedGenerator` endpoint to consistently use the account DID:
+   ```javascript
+   const accountDid = 'did:plc:ouadmsyvsfcpkxg3yyz4trqi';
+   // Use accountDid in describeFeedGenerator responses
    ```
-   curl -v https://swarm-feed-generator.onrender.com/xrpc/app.bsky.feed.describeFeedGenerator
-   ```
-   - Check response headers and body to see if the DIDs are consistent
 
-2. Verify the feed generator record in the Bluesky PDS:
+2. Verify feed generator responses:
    ```
-   node swarm-feed-generator/feed-generator/scripts/checkFeedRecord.js
+   curl -s https://swarm-feed-generator.onrender.com/xrpc/app.bsky.feed.describeFeedGenerator | jq
    ```
-   - This will show if the record has the correct DID
+   - The `did` field should be `did:plc:ouadmsyvsfcpkxg3yyz4trqi`
+   - Feed URIs should consistently use this same account DID
 
-3. Follow deployment checklist:
-   - Deploy to Render with cleared cache as outlined in `render-deployment-checklist.md`
-   - This ensures all code changes take effect
+3. Add cache-busting headers to force revalidation:
+   ```
+   Cache-Control: no-cache
+   ```
 
-**Benefit**: This will help determine if the middleware is working as expected or if a different approach is needed.
+**Benefit**: This will align our implementation with AT Protocol specifications and resolve the DID resolution errors.
 
 ### Step 2: Create & Track a Test Post
 **Goal**: Create a specific test post and track it through the feed generation system to see where it might be getting lost.
@@ -75,8 +87,10 @@ We'll use a systematic approach to diagnose and fix these issues:
    - `src/algos/index.ts`
 2. Test the feed endpoint directly:
    ```
-   curl https://swarm-feed-generator.onrender.com/xrpc/app.bsky.feed.getFeedSkeleton?feed=at://did:web:swarm-feed-generator.onrender.com/app.bsky.feed.generator/swarm-community
+   curl https://swarm-feed-generator.onrender.com/xrpc/app.bsky.feed.getFeedSkeleton?feed=at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.generator/swarm-community
    ```
+   
+   Note: We're now using the account DID in the feed URI as per AT Protocol specifications.
 
 **Benefit**: This will ensure the algorithm is correctly filtering for community members.
 
@@ -89,32 +103,31 @@ We'll use a systematic approach to diagnose and fix these issues:
 
 **Benefit**: This will help identify any database-related issues.
 
-## Revised Solutions
+## Revised Solutions Based on Expert Feedback
 
 ### Short-term solutions:
-1. **Proper Deployment Process**: 
+1. **Correct DID Implementation**: 
+   - Update the `describeFeedGenerator` endpoint to use the account DID (`did:plc:ouadmsyvsfcpkxg3yyz4trqi`)
+   - Ensure feed URIs consistently use this same account DID
+   - Modify or remove our middleware that was incorrectly trying to use the service DID everywhere
+
+2. **Add Cache-Busting Headers**:
+   - Add `Cache-Control: no-cache` headers to the DID document response
+   - This will force clients to revalidate and avoid cached resolution failures
+
+3. **Update Feed Generator Record**:
+   - Verify that the feed generator record in the Bluesky PDS has the correct configuration
+   - Run the `checkFeedRecord.js` script to verify the current state
+
+4. **Proper Deployment Process**: 
    - Follow the render-deployment-checklist.md including the "Clear build cache & deploy" option
-   - This ensures all code changes take effect, including middleware fixes
+   - This ensures all code changes take effect
 
-2. **Update Feed Generator Record**: 
-   - Use the updateFeedGenDid.js script to ensure the feed generator record has the correct DID
-   - This directly addresses the DID resolution issue at the Bluesky PDS level
-   ```
-   node swarm-feed-generator/feed-generator/scripts/updateFeedGenDid.js
-   ```
-
-3. **Force DID Resolution Refresh**:
-   - Implement a script to force the DID resolution to refresh
-   - Clear caches that might be preventing the update
-
-4. **Implement Firehose Health Endpoint**: 
+5. **Implement Firehose Health Endpoint**: 
    - Add a proper health endpoint in `src/server.ts` to monitor the firehose connection.
 
-5. **Expand Community Members**: 
+6. **Expand Community Members**: 
    - Consider adding more DIDs to the `SWARM_COMMUNITY_MEMBERS` array.
-
-6. **Create Admin Endpoint**: 
-   - Add an endpoint to manually add posts to the database (for testing).
 
 7. ✅ **Create Test Scripts**: 
    - ~~Implement scripts to help diagnose and test the database.~~ **IMPLEMENTED** - Created `check-test-post.js` and `add-test-post.js`.
@@ -133,8 +146,9 @@ We'll use a systematic approach to diagnose and fix these issues:
 | Issue | Date | Attempted Solution | Result | Next Steps |
 |-------|------|-------------------|--------|------------|
 | Empty Feed | 2023-03-22 | Created diagnostic scripts `check-test-post.js` and `add-test-post.js` | **Done** | Test post creation and database storage |
-| DID Resolution | 2023-03-22 | Created middleware in `fix-did.ts` to ensure consistent DIDs | ⚠️ **Partial** | Issue is still occurring; need to update feed generator record and follow deployment checklist |
-| Firehose Health | 2023-03-22 | Implemented health endpoint in `server.ts` | In Progress | Test the endpoint |
+| DID Resolution | 2023-03-22 | Created middleware in `fix-did.ts` to ensure consistent DIDs | ⚠️ **Incorrect Approach** | Reverse approach - need to use account DID consistently, not service DID |
+| DID Resolution | 2023-03-23 | Received expert feedback identifying our misconception | **Insight Gained** | Update implementation to use account DID in describeFeedGenerator |
+| Firehose Health | 2023-03-22 | Implemented health endpoint in `src/server.ts` | In Progress | Test the endpoint |
 
 ## Step-by-Step Execution Workflow
 
@@ -157,7 +171,7 @@ We'll use a systematic approach to diagnose and fix these issues:
 
 **Status**: **Done**
 
-### Step 2: Fix DID resolution with middleware
+### Step 2: Fix DID resolution with middleware (INCORRECT APPROACH)
 **Goal**: Ensure consistent DIDs are used across the application, specifically for feed URIs.
 
 1. Create middleware in `src/middleware/fix-did.ts` to intercept and fix responses.
@@ -171,23 +185,45 @@ We'll use a systematic approach to diagnose and fix these issues:
 - Created `fix-did.ts` middleware to ensure consistent DIDs across the application
 - Implemented the middleware in `server.ts` to intercept and fix all responses
 - Updated HTML responses to use the service DID consistently
-- Initial testing seemed to resolve the issue, but it's now recurring
-- The middleware implementation alone is insufficient; need to follow deployment checklist and update feed generator record
+- Initial testing seemed promising, but the issue persisted
+- **Critical realization**: Our approach was fundamentally incorrect - we were trying to make everything use the service DID when it should be using the account DID
 
-**Status**: ⚠️ **Incomplete** - Further actions needed
+**Status**: ❌ **Incorrect Approach** - Need to change direction based on expert feedback
 
-### Step 3: Address recurring DID resolution issues
-**Goal**: Implement a more robust solution for the DID resolution issue.
+### Step 3: Implement correct DID usage
+**Goal**: Update implementation to use the account DID in `describeFeedGenerator` and feed URIs.
 
-1. Follow the deployment checklist in render-deployment-checklist.md:
-   - Log in to Render dashboard 
-   - Use "Clear build cache & deploy" option to ensure all changes take effect
-2. Run the updateFeedGenDid.js script to update the feed generator record:
+1. Modify or remove the middleware that was incorrectly trying to use the service DID:
+   - Update `src/middleware/fix-did.ts` to ensure account DID consistency instead
+   - Or remove it if it's no longer needed with the correct approach
+
+2. Update the `describeFeedGenerator` implementation:
+   ```javascript
+   const accountDid = 'did:plc:ouadmsyvsfcpkxg3yyz4trqi';
+   
+   // In the describeFeedGenerator response:
+   {
+     did: accountDid,
+     feeds: [
+       {
+         uri: `at://${accountDid}/app.bsky.feed.generator/swarm-community`,
+         // other properties
+       }
+     ]
+   }
    ```
-   node swarm-feed-generator/feed-generator/scripts/updateFeedGenDid.js
+
+3. Add cache-busting headers to force revalidation:
+   ```javascript
+   res.set('Cache-Control', 'no-cache');
    ```
-3. Verify the feed generator record is updated using checkFeedRecord.js.
-4. Test the feed in the Bluesky app to confirm DID resolution is working.
+
+4. Deploy changes to production using "Clear build cache & deploy" in Render.
+
+5. Verify correct implementation:
+   ```bash
+   curl -s https://swarm-feed-generator.onrender.com/xrpc/app.bsky.feed.describeFeedGenerator | jq
+   ```
 
 ### Step 4: Implement firehose health endpoint
 **Goal**: Implement a proper health endpoint for checking the firehose connection status.
