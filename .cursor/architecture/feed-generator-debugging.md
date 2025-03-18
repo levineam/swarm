@@ -28,16 +28,6 @@ This document focuses specifically on debugging the Swarm Feed Generator. It pro
 
 ### Step 1: Fix DID Resolution Issue
 
-#### ⚠️ IMMEDIATE ACTION - Run this first when you see DID resolution errors:
-```bash
-cd swarm-feed-generator/feed-generator && node scripts/updateFeedGenDid.js
-```
-This command updates the feed generator record with the correct service DID and will immediately fix the DID resolution error. However, this is a temporary fix, as the issue tends to recur periodically.
-
-After running this script:
-1. Verify the feed appears correctly in the Bluesky app
-2. Follow the steps below to understand and implement a permanent solution
-
 #### Issue Description
 - The Bluesky app displays an error: "could not resolve identity: did:web:swarm-feed-generator.onrender.com"
 - Even though the feed generator record exists and DID document seems correctly configured
@@ -73,6 +63,36 @@ After running this script:
      }
      ```
 
+#### Permanent Solutions (FOCUS ON THESE FIRST)
+
+1. **⭐ Deploy with Cleared Cache (PRIMARY SOLUTION)** ⭐:
+   - Log in to the Render dashboard and navigate to the feed generator service
+   - Select "Clear build cache & deploy" option to ensure the latest code is used
+   - This is the most important step as the code fix in `src/methods/describe-generator.ts` is correct but not being applied
+   - Monitor deployment logs to ensure successful build and deployment
+
+2. **Add a Validation Layer**:
+   - Implement middleware that validates DIDs in all responses before they're returned
+   - This would catch and fix any inconsistencies even if the underlying issue persists
+
+3. **Implement Auto-Correction at Startup**:
+   - Add code to the server startup process that verifies and corrects feed record DIDs
+   - This would effectively run the `updateFeedGenDid.js` script automatically on each restart
+
+#### Temporary Fix (Only if immediate resolution is needed)
+
+If you need immediate resolution while waiting for the deployment with cleared cache:
+
+```bash
+cd swarm-feed-generator/feed-generator && node scripts/updateFeedGenDid.js
+```
+
+This command updates the feed generator record with the correct service DID and will temporarily fix the DID resolution error. However, this doesn't address the root cause, so the issue will recur until a permanent solution is implemented.
+
+After running this script:
+1. Verify the feed appears correctly in the Bluesky app
+2. **Important**: Still proceed with the permanent solution (cleared cache deployment)
+
 #### Diagnostic Steps
 1. Check DID document:
    ```bash
@@ -98,42 +118,19 @@ After running this script:
    curl "https://swarm-feed-generator.onrender.com/xrpc/app.bsky.feed.getFeedSkeleton?feed=at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.generator/swarm-community"
    ```
 
-#### Solutions
-
-**Temporary Fix (Apply Immediately)**:
-Run the `updateFeedGenDid.js` script to update the feed generator record with the correct service DID:
-```bash
-cd swarm-feed-generator/feed-generator && node scripts/updateFeedGenDid.js
-```
-
-This fixes the issue temporarily but doesn't address the root cause, so it will likely recur.
-
-**Permanent Solutions (In order of priority)**:
-
-1. **Ensure Proper Deployment** ⭐:
-   - Deploy to Render with the "Clear build cache & deploy" option to ensure the latest code is used
-   - This is critical as the code fix in `src/methods/describe-generator.ts` is correct but not being applied
-
-2. **Add a Validation Layer**:
-   - Implement middleware that validates DIDs in all responses before they're returned
-   - This would catch and fix any inconsistencies even if the underlying issue persists
-
-3. **Implement Auto-Correction at Startup**:
-   - Add code to the server startup process that verifies and corrects feed record DIDs
-   - This would effectively run the `updateFeedGenDid.js` script automatically on each restart
-
 #### Execution Summary
-1. **Immediate Fix Applied**:
-   - Run `updateFeedGenDid.js` script to update the feed generator record with the correct service DID
-   - Verify the feed now appears correctly in the Bluesky app
+1. **Primary Action - Deploy with Cleared Cache**:
+   - Log in to Render dashboard and deploy with "Clear build cache & deploy" option
+   - This ensures the latest code with the correct DID logic is used
+   - Verify after deployment that feed URIs now use the service DID
 
 2. **Root Cause Investigation**:
    - Identified that feed URIs in the `describeFeedGenerator` response use the publisher DID instead of the service DID
    - Found the code is correct in `src/methods/describe-generator.ts` but not reflected in the deployed version
 
-3. **Permanent Fix Plan**:
-   - Deploy with cleared build cache to ensure the latest code is used
-   - Consider implementing auto-correction at startup as a safeguard
+3. **If Temporary Fix Was Applied**:
+   - The `updateFeedGenDid.js` script may have been used for immediate resolution
+   - This is only a stopgap measure until the proper deployment completes
 
 **Done**
 
