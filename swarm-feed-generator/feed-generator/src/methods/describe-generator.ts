@@ -50,13 +50,13 @@ export default function describeGenerator(server: Server, ctx: AppContext) {
       logger.info('Publisher DID', { publisherDid: ctx.cfg.publisherDid })
       logger.info('Service DID', { serviceDid: ctx.cfg.serviceDid })
 
-      // IMPORTANT: Use the service DID for feed URIs to ensure consistency
-      // This ensures that the DID used in the response matches the DID used in the feed URIs
-      const didToUse = ctx.cfg.serviceDid
+      // IMPORTANT: Use the PUBLISHER DID for feed URIs as per AT Protocol specifications
+      // This ensures that the DID used in the response matches the account DID that owns the feed
+      const accountDid = ctx.cfg.publisherDid
 
       const feeds = Object.keys(algos).map((shortname) => ({
         uri: AtUri.make(
-          didToUse,
+          accountDid,
           'app.bsky.feed.generator',
           shortname,
         ).toString(),
@@ -64,10 +64,14 @@ export default function describeGenerator(server: Server, ctx: AppContext) {
 
       logger.info('Returning feeds', { feeds })
 
+      // Add cache-busting header to force revalidation
+      // Note: Headers are set in the actual Express response handling,
+      // but this is a reminder that we need to add them in the server.ts file
+
       return {
         encoding: 'application/json',
         body: {
-          did: ctx.cfg.serviceDid,
+          did: accountDid, // Use account DID as per AT Protocol specs
           feeds,
         },
       }

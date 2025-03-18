@@ -13,7 +13,6 @@ import feedGeneration from './methods/feed-generation'
 import { FirehoseSubscription } from './subscription'
 import makeWellKnownRouter from './well-known'
 import logger, { getMemoryLogs } from './util/logger'
-import { fixFeedUris } from './middleware/fix-did'
 
 // Store logs in memory for debugging
 // This is now handled by the logger module
@@ -77,8 +76,17 @@ export class FeedGenerator {
     app.use(cors())
     app.use(express.json())
 
-    // Add the fixFeedUris middleware early to ensure it catches all responses
-    app.use(fixFeedUris(cfg.serviceDid, cfg.publisherDid))
+    // Cache-busting middleware to force revalidation
+    app.use((req, res, next) => {
+      // Add cache-control headers to all responses
+      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
+      next();
+    });
+
+    // Remove the fixFeedUris middleware since it was implementing the wrong approach
+    // app.use(fixFeedUris(cfg.serviceDid, cfg.publisherDid))
 
     // Remove the admin router setup
     // Set up admin router
@@ -144,18 +152,18 @@ export class FeedGenerator {
       })
     })
 
-    // Add a direct test endpoint for the XRPC endpoints
+    // Update the direct test endpoint for the XRPC endpoints to use the publisher DID
     app.get('/xrpc/app.bsky.feed.describeFeedGenerator', (req, res) => {
       logger.info('Direct test endpoint for describeFeedGenerator called')
       res.status(200).json({
-        did: cfg.serviceDid,
+        did: cfg.publisherDid, // Use publisher DID as per AT Protocol specs
         feeds: [
           {
-            uri: `at://${cfg.serviceDid}/app.bsky.feed.generator/swarm-community`,
+            uri: `at://${cfg.publisherDid}/app.bsky.feed.generator/swarm-community`,
             cid: 'bafyreihbvkwdpxqvvkxqjgvjlvvlvqvkxqvjvlvvlvqvkxqvjvlvvlvqvkxq',
           },
           {
-            uri: `at://${cfg.serviceDid}/app.bsky.feed.generator/swarm-trending`,
+            uri: `at://${cfg.publisherDid}/app.bsky.feed.generator/swarm-trending`,
             cid: 'bafyreihbvkwdpxqvvkxqjgvjlvvlvqvkxqvjvlvvlvqvkxqvjvlvvlvqvkxq',
           },
         ],
@@ -268,8 +276,8 @@ export class FeedGenerator {
     this.app.get('/', (req, res) => {
       logger.info('Root path called')
       
-      // Use the service DID in the HTML content
-      const serviceDid = this.cfg.serviceDid
+      // Use the publisher DID in the HTML content as per AT Protocol specs
+      const publisherDid = this.cfg.publisherDid
       
       res.status(200).send(`
         <!DOCTYPE html>
@@ -336,12 +344,12 @@ export class FeedGenerator {
             <div class="feed-item">
               <div class="feed-title">Swarm Community</div>
               <p>A feed of posts from Swarm community members</p>
-              <div class="feed-uri">at://${serviceDid}/app.bsky.feed.generator/swarm-community</div>
+              <div class="feed-uri">at://${publisherDid}/app.bsky.feed.generator/swarm-community</div>
             </div>
             <div class="feed-item">
               <div class="feed-title">Swarm Trending</div>
               <p>A feed of trending posts from the Swarm community</p>
-              <div class="feed-uri">at://${serviceDid}/app.bsky.feed.generator/swarm-trending</div>
+              <div class="feed-uri">at://${publisherDid}/app.bsky.feed.generator/swarm-trending</div>
             </div>
           </div>
           
