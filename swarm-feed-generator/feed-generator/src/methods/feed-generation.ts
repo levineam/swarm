@@ -4,7 +4,7 @@ import { InvalidRequestError } from '@atproto/xrpc-server'
 import algos from '../algos'
 import { AppContext } from '../config'
 import { Server } from '../lexicon'
-import logger from '../util/logger'
+import { logger } from '../util/logger'
 
 // Helper function for logging
 function log(message: string) {

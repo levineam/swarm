@@ -1,11 +1,8 @@
 import { Kysely, PostgresDialect } from 'kysely'
 import { Pool } from 'pg'
 
-import { createChildLogger, logError } from '../util/logger'
+import { logger } from '../util/logger'
 import { DatabaseSchema } from './schema'
-
-// Create a child logger for PostgreSQL operations
-const pgLogger = createChildLogger('postgres')
 
 /**
  * Creates a PostgreSQL database connection using Kysely.
@@ -25,11 +22,11 @@ export const createPostgresDb = (connectionString: string) => {
 
   // Log connection events for debugging
   pool.on('connect', () => {
-    pgLogger.debug('New client connected to the pool')
+    logger.debug('New client connected to the pool')
   })
 
   pool.on('error', (err) => {
-    logError('Unexpected error on idle client', err)
+    logger.error('Unexpected error on idle client', { error: err instanceof Error ? err.message : String(err) })
   })
 
   // Create and return the Kysely instance with PostgreSQL dialect

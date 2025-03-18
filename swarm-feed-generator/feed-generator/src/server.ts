@@ -12,13 +12,13 @@ import describeGenerator from './methods/describe-generator'
 import feedGeneration from './methods/feed-generation'
 import { FirehoseSubscription } from './subscription'
 import makeWellKnownRouter from './well-known'
-import logger, { getMemoryLogs } from './util/logger'
+import { logger } from './util/logger'
 
 // Store logs in memory for debugging
 // This is now handled by the logger module
 // const logs: string[] = []
 function log(message: string) {
-  // Use the Winston logger instead of console.log
+  // Use the logger instead of console.log
   logger.info(message)
 }
 
@@ -93,10 +93,15 @@ export class FeedGenerator {
     // const adminRouter = createAdminRouter(db)
     // app.use('/admin', adminRouter)
 
-    // Add a logs endpoint for debugging
+    // Endpoint to check the last few logs for debugging
     app.get('/logs', (req, res) => {
-      const logs = getMemoryLogs()
-      res.json({ logs })
+      logger.info('Logs endpoint called')
+      // Instead of using getMemoryLogs, just return a message that logs are available in the console/log files
+      res.status(200).json({
+        message: 'Logs are available in the console and log files',
+        info: 'To view detailed logs, check the application console output or log files',
+        timestamp: new Date().toISOString()
+      })
     })
 
     // Health check endpoint

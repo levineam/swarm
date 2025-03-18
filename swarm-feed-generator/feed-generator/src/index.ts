@@ -1,10 +1,7 @@
 import dotenv from 'dotenv'
 
 import { FeedGenerator } from './server'
-import { createChildLogger, logError } from './util/logger'
-
-// Create a root logger for the application
-const logger = createChildLogger('app')
+import { logger } from './util/logger'
 
 // load .env before doing anything else
 dotenv.config()
@@ -48,13 +45,13 @@ const run = async () => {
       }`,
     })
   } catch (err) {
-    logError('Failed to start feed generator', err)
+    logger.error('Failed to start feed generator', { error: err instanceof Error ? err.message : String(err) })
     process.exit(1)
   }
 }
 
 // Run the server
 run().catch((err) => {
-  logError('Unexpected error during startup', err)
+  logger.error('Unexpected error during startup', { error: err instanceof Error ? err.message : String(err) })
   process.exit(1)
 })

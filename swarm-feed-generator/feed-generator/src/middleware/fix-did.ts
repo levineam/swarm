@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express'
-import logger from '../util/logger'
+import { logger } from '../util/logger'
 
 /**
  * Creates a middleware that fixes feed URIs by replacing the publisher DID with the service DID

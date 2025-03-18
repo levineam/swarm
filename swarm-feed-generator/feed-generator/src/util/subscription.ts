@@ -15,6 +15,8 @@ import { Database } from '../db'
 
 export abstract class FirehoseSubscriptionBase {
   public sub: Subscription<RepoEvent>
+  private _connected: boolean = false
+  private _lastCursor?: number
 
   constructor(public db: Database, public service: string) {
     this.sub = new Subscription({
@@ -38,17 +40,20 @@ export abstract class FirehoseSubscriptionBase {
 
   async run(subscriptionReconnectDelay: number) {
     try {
+      this._connected = true
       for await (const evt of this.sub) {
         this.handleEvent(evt).catch((err) => {
           console.error('repo subscription could not handle message', err)
         })
         // update stored cursor every 20 events or so
         if (isCommit(evt) && evt.seq % 20 === 0) {
+          this._lastCursor = evt.seq
           await this.updateCursor(evt.seq)
         }
       }
     } catch (err) {
       console.error('repo subscription errored', err)
+      this._connected = false
       setTimeout(
         () => this.run(subscriptionReconnectDelay),
         subscriptionReconnectDelay,
@@ -56,7 +61,16 @@ export abstract class FirehoseSubscriptionBase {
     }
   }
 
+  isFirehoseConnected(): boolean {
+    return this._connected
+  }
+
+  getLastCursor(): number | undefined {
+    return this._lastCursor
+  }
+
   async updateCursor(cursor: number) {
+    this._lastCursor = cursor
     await this.db
       .updateTable('sub_state')
       .set({ cursor })
@@ -70,6 +84,9 @@ export abstract class FirehoseSubscriptionBase {
       .selectAll()
       .where('service', '=', this.service)
       .executeTakeFirst()
+    if (res && res.cursor) {
+      this._lastCursor = res.cursor
+    }
     return res ? { cursor: res.cursor } : {}
   }
 }
