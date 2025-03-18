@@ -6,14 +6,41 @@ This document outlines our debugging approach for the Swarm Feed Generator, spec
 
 1. **Empty Feed Issue**: The swarm-community feed is currently showing as empty when accessed via the API.
 2. **Firehose Connection Issues**: The health endpoint for the firehose returns a 404 error, suggesting the endpoint isn't properly implemented.
-3. **~~DID Resolution Issues~~**: ✅ **RESOLVED** - The DID resolution issue ("could not resolve identity" error) has been fixed with the implementation of the fix-did middleware.
+3. **DID Resolution Issues**: ⚠️ **RECURRING** - The DID resolution issue ("could not resolve identity: did:web:swarm-feed-generator.onrender.com") continues to occur despite implementing the fix-did middleware. This suggests either deployment issues or a more complex underlying cause.
 4. **Limited Community Members**: The `SWARM_COMMUNITY_MEMBERS` array in `src/swarm-community-members.ts` only includes 1 entry, which might be limiting feed content.
 
 ## Diagnostic Approach
 
 We'll use a systematic approach to diagnose and fix these issues:
 
-### Step 1: Create & Track a Test Post
+### Step 1: Address Recurring DID Resolution Issues
+**Goal**: Understand why the DID resolution issues continue to occur and implement a more robust fix.
+
+#### Possible Causes:
+1. **Deployment Issues**: Our middleware changes may not be properly deployed to the production environment
+2. **Caching Issues**: PDS or client-side caching might be preventing the resolution from updating
+3. **Feed Generator Record**: The issue could be with the feed generator record in the Bluesky PDS, not our code
+
+#### Diagnostic Steps:
+1. Check if the fix-did middleware is actually running in production:
+   ```
+   curl -v https://swarm-feed-generator.onrender.com/xrpc/app.bsky.feed.describeFeedGenerator
+   ```
+   - Check response headers and body to see if the DIDs are consistent
+
+2. Verify the feed generator record in the Bluesky PDS:
+   ```
+   node swarm-feed-generator/feed-generator/scripts/checkFeedRecord.js
+   ```
+   - This will show if the record has the correct DID
+
+3. Follow deployment checklist:
+   - Deploy to Render with cleared cache as outlined in `render-deployment-checklist.md`
+   - This ensures all code changes take effect
+
+**Benefit**: This will help determine if the middleware is working as expected or if a different approach is needed.
+
+### Step 2: Create & Track a Test Post
 **Goal**: Create a specific test post and track it through the feed generation system to see where it might be getting lost.
 
 #### Test Post Creation:
@@ -28,7 +55,7 @@ We'll use a systematic approach to diagnose and fix these issues:
 
 **Benefit**: This will help isolate exactly where in the pipeline the failure is occurring.
 
-### Step 2: Test Firehose Connection
+### Step 3: Test Firehose Connection
 **Goal**: Verify if the firehose is properly connected and receiving events.
 
 1. Implement a proper `/health/firehose` endpoint in `src/server.ts`.
@@ -40,7 +67,7 @@ We'll use a systematic approach to diagnose and fix these issues:
 
 **Benefit**: This will help determine if the issue is with the firehose connection itself.
 
-### Step 3: Review Feed Algorithm Implementation
+### Step 4: Review Feed Algorithm Implementation
 **Goal**: Ensure the feed algorithm is properly filtering and returning posts.
 
 1. Examine the swarm-community feed implementation in:
@@ -53,7 +80,7 @@ We'll use a systematic approach to diagnose and fix these issues:
 
 **Benefit**: This will ensure the algorithm is correctly filtering for community members.
 
-### Step 4: Database Diagnostics
+### Step 5: Database Diagnostics
 **Goal**: Verify the database is properly storing and indexing posts.
 
 1. Check the database schema and indexes.
@@ -62,14 +89,35 @@ We'll use a systematic approach to diagnose and fix these issues:
 
 **Benefit**: This will help identify any database-related issues.
 
-## Potential Solutions
+## Revised Solutions
 
 ### Short-term solutions:
-1. **Implement Firehose Health Endpoint**: Add a proper health endpoint in `src/server.ts` to monitor the firehose connection.
-2. ✅ **Fix DID Resolution**: ~~Implement middleware to ensure consistent DIDs in feed URIs.~~ **IMPLEMENTED** - The middleware has been created and deployed successfully.
-3. **Expand Community Members**: Consider adding more DIDs to the `SWARM_COMMUNITY_MEMBERS` array.
-4. **Create Admin Endpoint**: Add an endpoint to manually add posts to the database (for testing).
-5. ✅ **Create Test Scripts**: ~~Implement scripts to help diagnose and test the database.~~ **IMPLEMENTED** - Created `check-test-post.js` and `add-test-post.js`.
+1. **Proper Deployment Process**: 
+   - Follow the render-deployment-checklist.md including the "Clear build cache & deploy" option
+   - This ensures all code changes take effect, including middleware fixes
+
+2. **Update Feed Generator Record**: 
+   - Use the updateFeedGenDid.js script to ensure the feed generator record has the correct DID
+   - This directly addresses the DID resolution issue at the Bluesky PDS level
+   ```
+   node swarm-feed-generator/feed-generator/scripts/updateFeedGenDid.js
+   ```
+
+3. **Force DID Resolution Refresh**:
+   - Implement a script to force the DID resolution to refresh
+   - Clear caches that might be preventing the update
+
+4. **Implement Firehose Health Endpoint**: 
+   - Add a proper health endpoint in `src/server.ts` to monitor the firehose connection.
+
+5. **Expand Community Members**: 
+   - Consider adding more DIDs to the `SWARM_COMMUNITY_MEMBERS` array.
+
+6. **Create Admin Endpoint**: 
+   - Add an endpoint to manually add posts to the database (for testing).
+
+7. ✅ **Create Test Scripts**: 
+   - ~~Implement scripts to help diagnose and test the database.~~ **IMPLEMENTED** - Created `check-test-post.js` and `add-test-post.js`.
 
 ### Medium-term solutions:
 1. **Enhance Firehose Subscription Logic**: Improve error handling and reconnection strategies.
@@ -85,7 +133,7 @@ We'll use a systematic approach to diagnose and fix these issues:
 | Issue | Date | Attempted Solution | Result | Next Steps |
 |-------|------|-------------------|--------|------------|
 | Empty Feed | 2023-03-22 | Created diagnostic scripts `check-test-post.js` and `add-test-post.js` | **Done** | Test post creation and database storage |
-| DID Resolution | 2023-03-22 | Created middleware in `fix-did.ts` to ensure consistent DIDs | **Done** ✅ | DID resolution error is now resolved |
+| DID Resolution | 2023-03-22 | Created middleware in `fix-did.ts` to ensure consistent DIDs | ⚠️ **Partial** | Issue is still occurring; need to update feed generator record and follow deployment checklist |
 | Firehose Health | 2023-03-22 | Implemented health endpoint in `server.ts` | In Progress | Test the endpoint |
 
 ## Step-by-Step Execution Workflow
@@ -123,12 +171,25 @@ We'll use a systematic approach to diagnose and fix these issues:
 - Created `fix-did.ts` middleware to ensure consistent DIDs across the application
 - Implemented the middleware in `server.ts` to intercept and fix all responses
 - Updated HTML responses to use the service DID consistently
-- Testing confirmed that DID resolution errors are no longer occurring
-- Updated the progress tracking table
+- Initial testing seemed to resolve the issue, but it's now recurring
+- The middleware implementation alone is insufficient; need to follow deployment checklist and update feed generator record
 
-**Status**: **Done** ✅
+**Status**: ⚠️ **Incomplete** - Further actions needed
 
-### Step 3: Implement firehose health endpoint
+### Step 3: Address recurring DID resolution issues
+**Goal**: Implement a more robust solution for the DID resolution issue.
+
+1. Follow the deployment checklist in render-deployment-checklist.md:
+   - Log in to Render dashboard 
+   - Use "Clear build cache & deploy" option to ensure all changes take effect
+2. Run the updateFeedGenDid.js script to update the feed generator record:
+   ```
+   node swarm-feed-generator/feed-generator/scripts/updateFeedGenDid.js
+   ```
+3. Verify the feed generator record is updated using checkFeedRecord.js.
+4. Test the feed in the Bluesky app to confirm DID resolution is working.
+
+### Step 4: Implement firehose health endpoint
 **Goal**: Implement a proper health endpoint for checking the firehose connection status.
 
 1. Add a `/health/firehose` endpoint in `src/server.ts`.
@@ -138,7 +199,7 @@ We'll use a systematic approach to diagnose and fix these issues:
 5. Update the progress tracking table.
 6. Commit changes to git.
 
-### Step 4: Expand community members list
+### Step 5: Expand community members list
 **Goal**: Ensure the community members list is comprehensive and includes test accounts.
 
 1. Update `src/swarm-community-members.ts` to include more DIDs.
@@ -146,7 +207,7 @@ We'll use a systematic approach to diagnose and fix these issues:
 3. Update the progress tracking table.
 4. Commit changes to git.
 
-### Step 5: Final verification
+### Step 6: Final verification
 **Goal**: Verify all changes are working together to fix the feed.
 
 1. Restart the feed generator service.
