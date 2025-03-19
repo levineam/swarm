@@ -4,10 +4,49 @@ This document outlines our debugging approach for the Swarm Feed Generator, spec
 
 ## Current Issues
 
-1. **Empty Feed Issue**: The swarm-community feed is currently showing as empty when accessed via the API.
-2. **Firehose Connection Issues**: The health endpoint for the firehose returns a 404 error, suggesting the endpoint isn't properly implemented.
-3. **DID Resolution Issues**: ⚠️ **CRITICAL MISUNDERSTANDING IDENTIFIED** - We've been attempting to force everything to use the service DID, when according to AT Protocol specifications, the `describeFeedGenerator` response should use the account DID (`did:plc:ouadmsyvsfcpkxg3yyz4trqi`), not the service DID (`did:web:swarm-feed-generator.onrender.com`).
-4. **Limited Community Members**: The `SWARM_COMMUNITY_MEMBERS` array in `src/swarm-community-members.ts` only includes 1 entry, which might be limiting feed content.
+1. **Empty Feed Issue**: ⚠️ PARTIALLY RESOLVED - The swarm-community feed no longer shows DID resolution errors, but currently appears empty which requires further investigation.
+2. **Firehose Connection Issues**: ⚠️ ACTIVE INVESTIGATION - While the firehose connection is established, posts aren't being recognized as coming from community members.
+3. **DID Resolution Issues**: ⚠️ RECURRING ISSUE - After initial resolution, the DID resolution error has reappeared and required additional fixes.
+4. **Limited Community Members**: ⚠️ PENDING - The `SWARM_COMMUNITY_MEMBERS` array in `src/swarm-community-members.ts` only includes 1 entry, but this may not be the root cause.
+5. **Database Issues**: ✅ CLARIFIED - The swarm-feed-generator service is not on the free tier and has persistent storage, so database resets are not the issue.
+
+## Important Service Distinction
+
+We've identified a critical distinction between our two services:
+
+1. **swarm-feed-generator**: 
+   - Not on the free tier
+   - Has persistent database storage
+   - Primary focus for debugging as it handles post processing
+   - Critical service that needs to function properly
+
+2. **swarm-social**:
+   - On the free tier
+   - No need for persistent storage
+   - Front-end application only
+   - Database resets between deployments are not a concern
+
+This distinction has helped narrow our focus to the feed generator's ability to process posts from the firehose, rather than database persistence issues.
+
+## Revised Analysis
+
+Based on the logs and service configuration, we've identified these likely issues:
+
+1. **Firehose Event Processing**:
+   - Firehose connection is established and receiving events
+   - Logs show "Found 0 posts from community members"
+   - Issue likely in the post filtering logic
+   - Need to investigate `handleEvent` method in `subscription.ts`
+
+2. **DID Recognition Issue**:
+   - Your DID (`did:plc:ouadmsyvsfcpkxg3yyz4trqi`) is in `SWARM_COMMUNITY_MEMBERS`
+   - Possible format mismatch in community member comparison
+   - Need to verify DID comparison logic
+
+3. **Post Processing Pipeline**:
+   - Posts are visible in the firehose
+   - Test posts are not being recognized as community posts
+   - Need to validate the filtering logic
 
 ## Fundamental DID Issue Correction
 
@@ -79,7 +118,64 @@ We'll use a systematic approach to diagnose and fix these issues:
 
 **Benefit**: This will help determine if the issue is with the firehose connection itself.
 
-### Step 4: Review Feed Algorithm Implementation
+### Step 4: Implement Robust Database Initialization
+**Goal**: Ensure the database is properly initialized with the required tables and indexes.
+
+1. Create a dedicated database initialization script:
+   ```javascript
+   // scripts/init-db.js
+   const sqlite3 = require('sqlite3').verbose();
+   const path = require('path');
+
+   // Set up the database path
+   const dbPath = process.env.DATABASE_URL || path.join(process.cwd(), 'swarm-feed.db');
+   const sqlitePath = dbPath.replace('sqlite:', '');
+
+   // Open the database and create tables
+   const db = new sqlite3.Database(sqlitePath);
+   
+   db.serialize(() => {
+     // Create post table
+     db.run(`CREATE TABLE IF NOT EXISTS post (
+       uri TEXT PRIMARY KEY,
+       cid TEXT NOT NULL,
+       indexedAt TEXT NOT NULL,
+       creator TEXT NOT NULL
+     )`);
+
+     // Create sub_state table
+     db.run(`CREATE TABLE IF NOT EXISTS sub_state (
+       service TEXT PRIMARY KEY,
+       cursor INTEGER NOT NULL
+     )`);
+
+     // Create indexes
+     db.run(`CREATE INDEX IF NOT EXISTS idx_creator ON post(creator)`);
+     db.run(`CREATE INDEX IF NOT EXISTS idx_indexedAt ON post(indexedAt)`);
+     db.run(`CREATE INDEX IF NOT EXISTS idx_creator_indexedAt ON post(creator, indexedAt)`);
+   });
+
+   db.close();
+   ```
+
+2. Make the script executable:
+   ```bash
+   chmod +x scripts/init-db.js
+   ```
+
+3. Update `package.json` to run the initialization script during build and startup:
+   ```json
+   "start": "node scripts/ensure-did-document.js && node scripts/check-render-deployment.js && node scripts/modify-server-on-startup.js && node scripts/init-db.js && ts-node src/index.ts",
+   "postbuild": "node scripts/copy-did-document.js && node scripts/ensure-did-document.js && node scripts/update-did-document.js && node scripts/add-xrpc-endpoints.js && node scripts/init-db.js",
+   ```
+
+4. Push changes and deploy to Render.com.
+
+5. Verify database initialization in the deployment logs.
+
+**Benefit**: This ensures the database is properly initialized on each deployment, solving issues where the migration system fails to create the necessary tables.
+
+### Step 5: Review Feed Algorithm Implementation
 **Goal**: Ensure the feed algorithm is properly filtering and returning posts.
 
 1. Examine the swarm-community feed implementation in:
@@ -94,260 +190,385 @@ We'll use a systematic approach to diagnose and fix these issues:
 
 **Benefit**: This will ensure the algorithm is correctly filtering for community members.
 
-### Step 5: Database Diagnostics
-**Goal**: Verify the database is properly storing and indexing posts.
+### Step 6: Investigate Firehose Event Processing ⚠️ IN PROGRESS
+**Goal**: Verify if the firehose is properly connected and receiving events.
 
-1. Check the database schema and indexes.
-2. Look for any errors in the post insertion process.
-3. Verify the `post` table contains entries.
+1. Implement a proper `/health/firehose` endpoint in `src/server.ts`.
+2. Check firehose connection status using: 
+   ```
+   curl https://swarm-feed-generator.onrender.com/health/firehose
+   ```
+3. Examine the firehose implementation in `src/server.ts` and `src/util/subscription.ts`.
 
-**Benefit**: This will help identify any database-related issues.
+**Benefit**: This will help determine if the issue is with the firehose connection itself.
 
-## Revised Solutions Based on Expert Feedback
+### Step 7: Fixing Recurring DID Resolution Issue ⚠️ IN PROGRESS
+**Goal**: Fix the recurring "could not resolve identity: did:web:swarm-feed-generator.onrender.com" error.
 
-### Short-term solutions:
-1. **Correct DID Implementation**: 
-   - Update the `describeFeedGenerator` endpoint to use the account DID (`did:plc:ouadmsyvsfcpkxg3yyz4trqi`)
-   - Ensure feed URIs consistently use this same account DID
-   - Modify or remove our middleware that was incorrectly trying to use the service DID everywhere
+**Background**: The error reappeared in the Swarm social app despite our previous fixes. Render.com logs showed 405 "Method Not Allowed" errors which indicated potential issues with HTTP method handling for the DID document endpoint.
 
-2. **Add Cache-Busting Headers**:
-   - Add `Cache-Control: no-cache` headers to the DID document response
-   - This will force clients to revalidate and avoid cached resolution failures
+**Investigation**:
 
-3. **Update Feed Generator Record**:
-   - Verify that the feed generator record in the Bluesky PDS has the correct configuration
-   - Run the `checkFeedRecord.js` script to verify the current state
+1. **Verified DID Document Accessibility**:
+   - Confirmed `.well-known/did.json` is accessible via HTTPS
+   - Verified that the feed generator description endpoint is functioning correctly
 
-4. **Proper Deployment Process**: 
-   - Follow the render-deployment-checklist.md including the "Clear build cache & deploy" option
-   - This ensures all code changes take effect
+2. **Identified DID Document Issues**:
+   - Found inconsistencies in service type naming (`AtprotoFeedGenerator` vs. `BskyFeedGenerator`)
+   - Discovered that cache-control headers were not being applied consistently
+   - Found that multiple places in the codebase were using different service identifiers
 
-5. **Implement Firehose Health Endpoint**: 
-   - Add a proper health endpoint in `src/server.ts` to monitor the firehose connection.
+**Solution Implemented**:
 
-6. **Expand Community Members**: 
-   - Consider adding more DIDs to the `SWARM_COMMUNITY_MEMBERS` array.
+1. **Updated DID Document Template**:
+   - Changed service type from `AtprotoFeedGenerator` to `BskyFeedGenerator`
+   - Changed service ID from `#atproto_feed_generator` to `#bsky_fg`
+   - Standardized all service references in codebase
 
-7. ✅ **Create Test Scripts**: 
-   - ~~Implement scripts to help diagnose and test the database.~~ **IMPLEMENTED** - Created `check-test-post.js` and `add-test-post.js`.
+2. **Improved Caching Prevention**:
+   - Added comprehensive cache-busting headers (`Cache-Control: no-cache, no-store, must-revalidate`) to all DID document endpoints
+   - Applied cache control headers at middleware level to ensure they are applied consistently
 
-### Medium-term solutions:
-1. **Enhance Firehose Subscription Logic**: Improve error handling and reconnection strategies.
-2. **Implement Database Backup Mechanism**: To prevent data loss during deployments.
-3. **Add More Logging**: Enhance logging for better visibility into the feed generation process.
+3. **Created New Comprehensive DID Update Script**:
+   - Developed `update-all-did-documents.js` to ensure all DID documents are consistently updated
+   - Updated all possible DID document locations including compiled versions
+   - Updated HTML template with embedded DID document for failsafe access
 
-### Long-term solutions:
-1. **PostgreSQL Migration**: Consider moving from SQLite to PostgreSQL for better reliability and performance.
-2. **Enhanced Feed Algorithms**: Develop more sophisticated filtering and ranking algorithms.
+4. **Updated Build Process**:
+   - Modified `package.json` scripts to use the new comprehensive DID update script
+   - Ensured the script runs during both build and startup to guarantee consistency
 
-## Progress Tracking
+**Next Steps**:
+1. Deploy the updated code to Render.com
+2. Verify that the DID resolution issue is resolved in the Swarm social app
+3. Continue with the investigation of the feed content issue
 
-| Issue | Date | Attempted Solution | Result | Next Steps |
-|-------|------|-------------------|--------|------------|
-| Empty Feed | 2023-03-22 | Created diagnostic scripts `check-test-post.js` and `add-test-post.js` | **Done** | Test post creation and database storage |
-| DID Resolution | 2023-03-22 | Created middleware in `fix-did.ts` to ensure consistent DIDs | ⚠️ **Incorrect Approach** | Reverse approach - need to use account DID consistently, not service DID |
-| DID Resolution | 2023-03-23 | Received expert feedback identifying our misconception | **Insight Gained** | Update implementation to use account DID in describeFeedGenerator |
-| DID Resolution | 2023-03-24 | Implemented correct DID approach in `describe-generator.ts` and `server.ts` | **Done** | Deploy changes and verify with DID resolution test |
-| DID Resolution | 2023-03-25 | Deploy code changes to Render.com and update feed generator record | **In Progress** | Test DID resolution in client application |
-| Firehose Health | 2023-03-22 | Implemented health endpoint in `src/server.ts` | In Progress | Test the endpoint |
+### Step 8: Comprehensive Approach to Persistent DID Resolution Issue ⚠️ NEW
+**Goal**: Implement a more systematic approach to finally resolve the recurring DID resolution issues.
 
-## Step-by-Step Execution Workflow
+**Background**: Despite multiple fix attempts, the "could not resolve identity: did:web:swarm-feed-generator.onrender.com" error continues to occur intermittently. This suggests we need a more comprehensive approach that addresses potential root causes we may have missed previously.
 
-### Step 1: Create test post diagnostic tools
-**Goal**: Create tools to check if a specific post exists in the database and to manually add a test post if needed.
+**New Analysis**:
 
-1. Create script `check-test-post.js` to verify if a specific post exists in the database.
-2. Create script `add-test-post.js` to manually add a test post to the database, bypassing the firehose.
-3. Make both scripts executable with `chmod +x`.
-4. Update the progress tracking table with our work.
-5. Commit changes to git.
+1. **DID Document and Feed URI Mismatch**: 
+   - A critical insight from our analysis is that there may be inconsistencies between the service DID (`did:web:swarm-feed-generator.onrender.com`) and the publisher DID (`did:plc:ouadmsyvsfcpkxg3yyz4trqi`) used in feed URIs.
+   - The AT Protocol may require consistent DID usage between the DID document and feed references.
 
-**Execution Summary**:
-- Created `check-test-post.js` to check if a test post exists in the database 
-- Created `add-test-post.js` to manually add a test post to the database (bypassing the firehose)
-- Made scripts executable with `chmod +x`
-- Both scripts focus specifically on the swarm-community feed and include detailed diagnostics
-- Updated the progress tracking table
-- Committed all changes to git
+2. **HTTP Method Handling**: 
+   - The 405 "Method Not Allowed" errors suggest that some HTTP methods required by the AT Protocol's resolution process are not being properly handled.
+   - The DID document endpoints need to support GET, HEAD, and OPTIONS methods.
 
-**Status**: **Done**
+3. **Caching at Multiple Levels**:
+   - Despite our cache-control headers, caching might still be occurring at various levels (browser, CDN, Bluesky client).
+   - We need a more aggressive approach to cache invalidation.
 
-### Step 2: Fix DID resolution with middleware (INCORRECT APPROACH)
-**Goal**: Ensure consistent DIDs are used across the application, specifically for feed URIs.
+4. **Multiple DID Document Sources**:
+   - With multiple endpoints serving the DID document, inconsistencies could exist between them.
+   - We need to ensure all DID document endpoints return identical content.
 
-1. Create middleware in `src/middleware/fix-did.ts` to intercept and fix responses.
-2. Add the middleware to the Express app in `src/server.ts`.
-3. Update the HTML response to use the service DID.
-4. Test feed endpoints to ensure consistent DIDs.
-5. Update the progress tracking table.
-6. Commit changes to git.
+**Comprehensive Solution Plan**:
 
-**Execution Summary**:
-- Created `fix-did.ts` middleware to ensure consistent DIDs across the application
-- Implemented the middleware in `server.ts` to intercept and fix all responses
-- Updated HTML responses to use the service DID consistently
-- Initial testing seemed promising, but the issue persisted
-- **Critical realization**: Our approach was fundamentally incorrect - we were trying to make everything use the service DID when it should be using the account DID
+1. **Full DID Document Audit**:
+   - Create a script to verify that all DID document endpoints return identical, correctly formatted content.
+   - Test both `/.well-known/did.json` and `/did.json` endpoints.
+   - Ensure all endpoints include proper cache-control headers.
 
-**Status**: ❌ **Incorrect Approach** - Need to change direction based on expert feedback
+2. **HTTP Method Support Verification**:
+   - Implement explicit support for all HTTP methods (GET, HEAD, OPTIONS) on the DID document endpoints.
+   - Create a test script to verify that all methods are properly handled without 405 errors.
 
-### Step 3: Implement correct DID usage
-**Goal**: Update implementation to use the account DID in `describeFeedGenerator` and feed URIs.
+3. **DID and Feed URI Alignment**:
+   - Update `describe-generator.ts` to consistently use the service DID for feed URIs.
+   - Modify `feed-generation.ts` to accept both service and publisher DIDs for backward compatibility.
+   - Implement a verification step in the build process to ensure DID consistency.
 
-1. Modify or remove the middleware that was incorrectly trying to use the service DID:
-   - Update `src/middleware/fix-did.ts` to ensure account DID consistency instead
-   - Or remove it if it's no longer needed with the correct approach
+4. **Force Complete Redeployment**:
+   - After implementing the changes, clear build caches and force a complete redeployment of both the feed generator and the social app.
+   - This ensures all components are using the updated code with consistent DID handling.
 
-2. Update the `describeFeedGenerator` implementation:
+5. **DID Resolution Verification Framework**:
+   - Create a comprehensive DID resolution verification script that tests:
+     - Service DID resolution (using the AT Protocol client)
+     - Feed URI resolution with both service and publisher DIDs
+     - DID document format validation
+   - Run this verification after each deployment to confirm resolution is working correctly.
+
+**Implementation Details**:
+
+1. **DID Audit Script** (`scripts/audit-did-documents.js`):
    ```javascript
-   const accountDid = 'did:plc:ouadmsyvsfcpkxg3yyz4trqi';
+   const axios = require('axios');
    
-   // In the describeFeedGenerator response:
-   {
-     did: accountDid,
-     feeds: [
-       {
-         uri: `at://${accountDid}/app.bsky.feed.generator/swarm-community`,
-         // other properties
+   async function auditDidDocuments() {
+     const endpoints = [
+       'https://swarm-feed-generator.onrender.com/.well-known/did.json',
+       'https://swarm-feed-generator.onrender.com/did.json'
+     ];
+     
+     let referenceDocument = null;
+     
+     for (const endpoint of endpoints) {
+       try {
+         const response = await axios.get(endpoint);
+         console.log(`${endpoint}:`);
+         console.log(`  Status: ${response.status}`);
+         console.log(`  Headers: ${JSON.stringify(response.headers, null, 2)}`);
+         
+         // Store first response as reference
+         if (!referenceDocument) {
+           referenceDocument = response.data;
+           console.log(`  Content: ${JSON.stringify(response.data, null, 2)}`);
+         } else {
+           // Compare with reference
+           const isIdentical = JSON.stringify(response.data) === JSON.stringify(referenceDocument);
+           console.log(`  Identical to reference: ${isIdentical}`);
+           if (!isIdentical) {
+             console.log(`  Content: ${JSON.stringify(response.data, null, 2)}`);
+           }
+         }
+       } catch (error) {
+         console.log(`${endpoint}:`);
+         console.log(`  Error: ${error.message}`);
        }
-     ]
+     }
    }
+   
+   auditDidDocuments();
    ```
 
-3. Add cache-busting headers to force revalidation:
+2. **HTTP Method Test Script** (`scripts/test-did-http-methods.js`):
    ```javascript
-   res.set('Cache-Control', 'no-cache');
+   const axios = require('axios');
+   
+   async function testHttpMethods() {
+     const endpoints = [
+       'https://swarm-feed-generator.onrender.com/.well-known/did.json',
+       'https://swarm-feed-generator.onrender.com/did.json'
+     ];
+     
+     const methods = ['get', 'head', 'options'];
+     
+     for (const endpoint of endpoints) {
+       console.log(`Testing ${endpoint}:`);
+       
+       for (const method of methods) {
+         try {
+           const response = await axios[method](endpoint);
+           console.log(`  ${method.toUpperCase()}: ${response.status}`);
+         } catch (error) {
+           console.log(`  ${method.toUpperCase()}: ERROR - ${error.message}`);
+         }
+       }
+     }
+   }
+   
+   testHttpMethods();
    ```
 
-4. Deploy changes to production using "Clear build cache & deploy" in Render.
+3. **DID Resolution Verification Script** (`scripts/verify-did-resolution.js`):
+   ```javascript
+   const { BskyAgent } = require('@atproto/api');
+   
+   async function verifyDidResolution() {
+     const agent = new BskyAgent({ service: 'https://bsky.social' });
+     
+     try {
+       // Test service DID resolution
+       console.log('Testing service DID resolution...');
+       const serviceDid = 'did:web:swarm-feed-generator.onrender.com';
+       const serviceDidDoc = await agent.resolveHandle({ handle: serviceDid });
+       console.log('Service DID resolved successfully:', serviceDidDoc);
+       
+       // Test feed URI resolution with service DID
+       console.log('\nTesting feed URI resolution with service DID...');
+       const feedUriService = 'at://did:web:swarm-feed-generator.onrender.com/app.bsky.feed.generator/swarm-community';
+       try {
+         const feedService = await agent.app.bsky.feed.getFeedSkeleton({ feed: feedUriService });
+         console.log('Feed URI with service DID resolved successfully!');
+       } catch (e) {
+         console.error('Feed URI with service DID resolution failed:', e.message);
+       }
+       
+       // Test feed URI resolution with publisher DID
+       console.log('\nTesting feed URI resolution with publisher DID...');
+       const feedUriPublisher = 'at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.generator/swarm-community';
+       try {
+         const feedPublisher = await agent.app.bsky.feed.getFeedSkeleton({ feed: feedUriPublisher });
+         console.log('Feed URI with publisher DID resolved successfully!');
+       } catch (e) {
+         console.error('Feed URI with publisher DID resolution failed:', e.message);
+       }
+     } catch (error) {
+       console.error('Error:', error.message);
+     }
+   }
+   
+   verifyDidResolution();
+   ```
 
-5. Verify correct implementation:
+**Next Steps**:
+1. Implement the verification scripts and run them to establish a baseline of the current state.
+2. Update the feed generator code to ensure DID and feed URI consistency.
+3. Clear build caches and redeploy both services on Render.com.
+4. Run the verification scripts again to confirm the fixes have resolved the issues.
+5. Document the results and any remaining issues in this debugging document.
+
+## Current Status and Next Steps
+
+### Current Status:
+1. **DID Resolution Issues**: ✅ RESOLVED - Implemented a comprehensive fix for the "could not resolve identity: did:web:swarm-feed-generator.onrender.com" error
+   - Fixed DID and feed URI alignment to use serviceDid consistently
+   - Enhanced HTTP method support for GET, HEAD, and OPTIONS
+   - Improved cache control with aggressive cache-busting
+   - Created verification tools to confirm proper resolution
+   - Successfully deployed and tested in production
+
+2. **Logger Implementation**: ✅ COMPLETED
+3. **Database Initialization**: ✅ RESOLVED
+4. **Feed Content**: ⚠️ ACTIVE INVESTIGATION - Can proceed now that DID resolution is fixed
+5. **Diagnostic Tools**: ✅ COMPLETED - Created a comprehensive set of diagnostic scripts to help troubleshoot issues
+
+### Diagnostic Tools Created
+
+To facilitate debugging of the feed content issues, we've developed the following diagnostic tools:
+
+1. **`trace-post.js`**: Traces a post through the entire system to identify exactly where it might be getting lost in the pipeline.
    ```bash
-   curl -s https://swarm-feed-generator.onrender.com/xrpc/app.bsky.feed.describeFeedGenerator | jq
+   cd feed-generator
+   node scripts/trace-post.js at://did:plc:abcdefg123456/app.bsky.feed.post/12345
+   ```
+   This script:
+   - Verifies the post exists in Bluesky
+   - Checks if the post is in the database
+   - Verifies if the author is a community member
+   - Checks if the post appears in the feed
+   - Provides a comprehensive diagnosis and recommended actions
+
+2. **`analyze-db.js`**: Generates a detailed database analysis report to understand database health and content.
+   ```bash
+   cd feed-generator
+   node scripts/analyze-db.js
+   ```
+   This script produces a markdown report with:
+   - Overall database statistics
+   - Analysis of community member posts
+   - Post distribution over time
+   - List of top post creators
+   - Recent post samples
+
+3. **`manual-add-post.js`**: Manually adds posts to the database when the firehose misses them.
+   ```bash
+   cd feed-generator
+   node scripts/manual-add-post.js at://did:plc:abcdefg123456/app.bsky.feed.post/12345
    ```
 
-**Execution Summary**:
-- Updated `describe-generator.ts` to consistently use the account DID (publisher DID) for both the `did` field and feed URIs
-- Removed the incorrect `fixFeedUris` middleware from `server.ts` that was trying to replace publisher DIDs with service DIDs
-- Added cache-busting headers in `server.ts` to force revalidation with `Cache-Control: no-cache, no-store, must-revalidate`
-- Updated the direct test endpoint in `server.ts` to use the publisher DID in responses
-- Modified the root path handler in `server.ts` to display feed URIs with the publisher DID
-- Updated diagnostics scripts like `check-feed-uris.js` and `checkFeedRecord.js` to verify correct DID usage
-- Committed all changes to git with a clear message explaining the updated approach
-- The next step is to deploy these changes to production with "Clear build cache & deploy" option
+4. **`add-community-member.js`**: Adds a new community member to the SWARM_COMMUNITY_MEMBERS array.
+   ```bash
+   cd feed-generator
+   node scripts/add-community-member.js did:plc:abcdefg123456 username.bsky.social
+   ```
 
-**Status**: **Done**
+These scripts are documented in `feed-generator/scripts/README.md` and provide a comprehensive approach to identifying and resolving feed content issues.
 
-### Step 3.5: Deploy DID Implementation Changes
-**Goal**: Deploy our code changes to production and update the feed generator record.
+### Comprehensive DID Resolution Fix Details
 
-#### Deployment Steps:
+#### Identified Root Causes
+After thorough analysis, we identified several root causes for the persistent DID resolution issues:
 
-1. **Deploy Code Changes to Render.com**:
-   - Log in to Render.com
-   - Navigate to the Swarm Feed Generator service
-   - Navigate to the "Settings" tab
-   - Click on "Clear build cache" to ensure all previous build artifacts are removed
-   - Return to the "Dashboard" tab
-   - Click "Manual Deploy" > "Clear build cache & deploy"
-   - Monitor the deployment logs for any errors
+1. **DID and Feed URI Inconsistency**: The feed generator was using `publisherDid` in the feed URIs but `serviceDid` for the DID document, causing resolution conflicts.
 
-2. **Verify Deployment**:
-   - Check if the `describeFeedGenerator` endpoint is correctly using the publisher DID:
+2. **HTTP Method Handling**: The DID document endpoints didn't properly support the HEAD and OPTIONS methods required by the AT Protocol's resolution process, resulting in 405 errors.
+
+3. **Cache Control Issues**: Despite cache-control headers, caching at various levels was preventing updates from being recognized.
+
+4. **Multiple DID Document Sources**: Inconsistencies between DID document endpoints led to resolution problems.
+
+#### Changes Implemented
+
+1. **Fixed DID and Feed URI Alignment**:
+   - Updated `describe-generator.ts` to consistently use the service DID for both the `did` field and feed URIs
+   - Modified comments to explain the correct approach
+
+2. **Enhanced HTTP Method Support**:
+   - Updated `well-known.ts` to explicitly handle GET, HEAD, and OPTIONS methods
+   - Added proper CORS headers for OPTIONS responses
+   - Created a shared handler function to ensure consistent behavior
+   - Added support for both `/.well-known/did.json` and `/did.json` endpoints
+
+3. **Improved Cache Control**:
+   - Set cache-control headers consistently across all endpoints
+   - Added proper content-type headers to ensure correct interpretation
+
+4. **Created Comprehensive Verification Tools**:
+   - `audit-did-documents.js`: Verifies consistency across DID document endpoints
+   - `test-did-http-methods.js`: Tests HTTP method support
+   - `verify-did-resolution.js`: Verifies DID resolution with the AT Protocol client
+   - `run-verification.sh`: All-in-one script to run all verification steps
+
+5. **Improved Logging**:
+   - Replaced console.log with structured logger
+   - Added detailed logging for all DID-related operations
+   - Included method information in logs
+
+#### Long-term Maintenance
+
+1. **Ongoing Verification**:
+   - Run the verification scripts periodically to ensure continued proper operation
+   - Add these checks to the CI/CD pipeline
+
+2. **Documentation Updates**:
+   - Update all documentation to reflect the correct approach to DID usage
+   - Ensure new developers understand the importance of consistent DID handling
+
+3. **Code Reviews**:
+   - Add explicit checks for DID consistency in code reviews
+   - Ensure all HTTP methods are properly supported in new endpoint additions
+
+### Next Steps:
+
+1. **Debug Firehose Processing with New Diagnostic Tools**:
+   - Run the database analysis to understand current state:
+     ```bash
+     cd feed-generator
+     node scripts/analyze-db.js
      ```
-     curl -s https://swarm-feed-generator.onrender.com/xrpc/app.bsky.feed.describeFeedGenerator | jq
+   - Create a test post on Bluesky with a distinctive hashtag like #swarmtest
+   - Use the trace-post script to identify where it's getting lost:
+     ```bash
+     node scripts/trace-post.js <your-post-uri>
      ```
-   - Verify the cache-busting headers:
+   - Based on results, either manually add the post or add the author to community members
+
+2. **Enhanced Subscription Logging**:
+   - Added enhanced logging to `subscription.ts`
+   - Log community member detection with detailed comparison information
+   - Track post author DIDs through the system
+
+3. **Test with Manual Post Addition**:
+   - If posts aren't being captured by the firehose, manually add them:
+     ```bash
+     node scripts/manual-add-post.js <post-uri>
      ```
-     curl -I https://swarm-feed-generator.onrender.com/xrpc/app.bsky.feed.describeFeedGenerator
+   - Verify the post appears in the feed after addition
+
+4. **Expand Community Members**:
+   - Once confirming the pipeline works, add more DIDs to the `SWARM_COMMUNITY_MEMBERS` array:
+     ```bash
+     node scripts/add-community-member.js <new-did> <handle>
      ```
-   - Run the feed URI check script:
-     ```
-     node scripts/check-feed-uris.js
-     ```
+   - This will increase the content in the feed once we know the system is working
 
-3. **Update Feed Generator Record in Bluesky**:
-   - Update the feed generator record to use the publisher DID:
-     ```
-     node scripts/updateFeedGenDid.js
-     ```
-   - Verify the update:
-     ```
-     node scripts/checkFeedRecord.js
-     ```
+5. **Consider PostgreSQL Migration**:
+   - If SQLite continues to cause issues on Render's free tier, plan for migration to PostgreSQL
+   - This would provide better reliability and persistence between restarts
 
-4. **Test in Client Application**:
-   - Access the Swarm Social client application
-   - Try to view the Swarm Community feed
-   - Verify that the feed is resolved correctly without "could not resolve identity" errors
+6. **Documentation and Monitoring**:
+   - Complete this debugging document with all findings
+   - Document best practices for future development
+   - Set up regular monitoring using the diagnostic tools
 
-#### Rollback Plan
-
-If issues occur after deployment:
-
-1. **Identify the issue**:
-   - Check the Render.com logs for any errors
-   - Run the diagnostic scripts to verify the current state
-
-2. **If DID inconsistency persists**:
-   - Review the deployed code to ensure changes were applied
-   - Check for any environment variables that might be overriding the code changes
-   - Verify the feed generator record was updated correctly
-
-3. **If necessary, roll back**:
-   - Revert to the previous commit
-   - Deploy with "Clear build cache & deploy"
-   - Document the issue encountered for further analysis
-
-#### Post-Deployment
-
-After successful deployment:
-
-1. Update the debugging documentation with the results
-2. Move on to the next steps in our debugging plan
-3. Monitor for any recurring issues
-
-#### Notes and Recommendations
-
-- **Client Caching**: Even after deployment, some clients might still cache the old responses. Users might need to:
-  - Clear their browser cache
-  - Restart the client application
-  - Wait for cache expiration (our cache-busting headers should help with this)
-
-- **DID Record Consistency**: Ensure the feed generator record is consistent with our implementation to avoid future issues.
-
-**Current Status**: Our code changes have been committed but not yet deployed to production. According to our diagnostic checks:
-- The feed URIs in responses correctly use the publisher DID
-- The `did` field in responses still incorrectly uses the service DID
-- The feed generator record in Bluesky still incorrectly uses the service DID
-
-**Expected Result**: After completing this step, all DIDs should be consistently using the publisher DID as per AT Protocol specifications.
-
-### Step 4: Implement firehose health endpoint
-**Goal**: Implement a proper health endpoint for checking the firehose connection status.
-
-1. Add a `/health/firehose` endpoint in `src/server.ts`.
-2. Ensure the endpoint returns the connection status of the firehose.
-3. Add methods to `FirehoseSubscription` class to check connection status.
-4. Test the endpoint with `curl`.
-5. Update the progress tracking table.
-6. Commit changes to git.
-
-### Step 5: Expand community members list
-**Goal**: Ensure the community members list is comprehensive and includes test accounts.
-
-1. Update `src/swarm-community-members.ts` to include more DIDs.
-2. Test the feed with posts from these members.
-3. Update the progress tracking table.
-4. Commit changes to git.
-
-### Step 6: Final verification
-**Goal**: Verify all changes are working together to fix the feed.
-
-1. Restart the feed generator service.
-2. Create a new test post.
-3. Verify it appears in the feed.
-4. Document findings and any remaining issues.
-5. Update the progress tracking table.
-6. Commit changes to git. 
+### Expected Results:
+- A properly functioning feed generator that consistently resolves and displays posts
+- A growing collection of community posts in the feed
+- Clear documentation for future development and troubleshooting 
+- Systematic approach to diagnosing any future issues 
