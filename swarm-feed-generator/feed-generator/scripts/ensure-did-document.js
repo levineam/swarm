@@ -43,8 +43,8 @@ const didDocument = {
       serviceEndpoint: 'https://bsky.social',
     },
     {
-      id: '#atproto_feed_generator',
-      type: 'AtprotoFeedGenerator',
+      id: '#bsky_fg',
+      type: 'BskyFeedGenerator',
       serviceEndpoint: `https://${hostname}`,
     },
   ],

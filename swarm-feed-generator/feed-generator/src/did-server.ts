@@ -1,10 +1,10 @@
 // @ts-nocheck
-import dotenv from 'dotenv'
 import express from 'express'
 import fs from 'fs'
 import path from 'path'
 
 // Load environment variables
+const dotenv = require('dotenv')
 dotenv.config()
 
 /**
@@ -23,6 +23,14 @@ export function startDidServer() {
   // Add request logging middleware
   app.use((req, res, next) => {
     console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`)
+    next()
+  })
+
+  // Add Cache-Control headers to all responses
+  app.use((req, res, next) => {
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate')
+    res.set('Pragma', 'no-cache')
+    res.set('Expires', '0')
     next()
   })
 
@@ -55,8 +63,8 @@ export function startDidServer() {
           serviceEndpoint: 'https://bsky.social',
         },
         {
-          id: '#atproto_feed_generator',
-          type: 'AtprotoFeedGenerator',
+          id: '#bsky_fg',
+          type: 'BskyFeedGenerator',
           serviceEndpoint: `https://${hostname}`,
         },
       ],
@@ -66,9 +74,6 @@ export function startDidServer() {
   // Serve the DID document at /.well-known/did.json
   app.get('/.well-known/did.json', (req, res) => {
     console.log('Serving DID document from /.well-known/did.json')
-
-    // Set Cache-Control header to prevent caching by CDN
-    res.set('Cache-Control', 'no-store')
 
     // Check if the DID document exists in the well-known directory
     const didJsonPath = path.join(
@@ -91,9 +96,6 @@ export function startDidServer() {
   // Also serve the DID document at /did.json for convenience
   app.get('/did.json', (req, res) => {
     console.log('Serving DID document from /did.json')
-
-    // Set Cache-Control header to prevent caching by CDN
-    res.set('Cache-Control', 'no-store')
 
     // Check if the DID document exists in the public directory
     const didJsonPath = path.join(path.join(__dirname, '../public'), 'did.json')

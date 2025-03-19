@@ -15,53 +15,34 @@
     <script>
         // As a fallback, we'll also embed the DID document directly in this page
         const didDocument = {
-            "@context": [
+        "@context": [
                 "https://www.w3.org/ns/did/v1",
                 "https://w3id.org/security/suites/secp256k1-2019/v1"
-            ],
-            "id": "did:web:swarm-feed-generator.onrender.com",
-            "verificationMethod": [
+        ],
+        "id": "did:web:swarm-feed-generator.onrender.com",
+        "verificationMethod": [
                 {
-                    "id": "did:web:swarm-feed-generator.onrender.com#atproto",
-                    "type": "EcdsaSecp256k1VerificationKey2019",
-                    "controller": "did:web:swarm-feed-generator.onrender.com",
-                    "publicKeyMultibase": "zQ3shojKAGY2sK3ThMHW7soP4tYDWLCRjJt9w14XKxkKZnnnK"
+                        "id": "did:web:swarm-feed-generator.onrender.com#atproto",
+                        "type": "EcdsaSecp256k1VerificationKey2019",
+                        "controller": "did:web:swarm-feed-generator.onrender.com",
+                        "publicKeyMultibase": "zQ3shojKAGY2sK3ThMHW7soP4tYDWLCRjJt9w14XKxkKZnnnK"
                 }
-            ],
-            "service": [
+        ],
+        "service": [
                 {
-                    "id": "#atproto_pds",
-                    "type": "AtprotoPersonalDataServer",
-                    "serviceEndpoint": "https://bsky.social"
+                        "id": "#atproto_pds",
+                        "type": "AtprotoPersonalDataServer",
+                        "serviceEndpoint": "https://bsky.social"
                 },
                 {
-                    "id": "#bsky_fg",
-                    "type": "BskyFeedGenerator",
-                    "serviceEndpoint": "https://swarm-feed-generator.onrender.com"
+                        "id": "#bsky_fg",
+                        "type": "BskyFeedGenerator",
+                        "serviceEndpoint": "https://swarm-feed-generator.onrender.com"
                 }
-            ]
-        };
+        ]
+};
         
         document.getElementById('didDocument').textContent = JSON.stringify(didDocument, null, 2);
-        
-        // Also make the DID document available at the correct path
-        fetch('/.well-known/did.json')
-            .then(response => {
-                if (!response.ok) {
-                    // If the DID document is not available, create it
-                    return fetch('/.well-known/did.json', {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(didDocument)
-                    });
-                }
-                return response;
-            })
-            .catch(error => {
-                console.error('Error accessing DID document:', error);
-            });
     </script>
 </body>
-</html> 
+</html>

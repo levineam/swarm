@@ -13,6 +13,11 @@ const makeRouter = (ctx: AppContext) => {
       `Received request for DID document. Service DID: ${ctx.cfg.serviceDid}, Hostname: ${ctx.cfg.hostname}`,
     )
 
+    // Add cache-busting headers to prevent caching
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate')
+    res.set('Pragma', 'no-cache')
+    res.set('Expires', '0')
+
     if (!ctx.cfg.serviceDid.endsWith(ctx.cfg.hostname)) {
       console.log(
         `DID document request rejected: Service DID ${ctx.cfg.serviceDid} does not match hostname ${ctx.cfg.hostname}`,
@@ -52,8 +57,8 @@ const makeRouter = (ctx: AppContext) => {
           serviceEndpoint: 'https://bsky.social',
         },
         {
-          id: '#atproto_feed_generator',
-          type: 'AtprotoFeedGenerator',
+          id: '#bsky_fg',
+          type: 'BskyFeedGenerator',
           serviceEndpoint: `https://${ctx.cfg.hostname}`,
         },
       ],
@@ -65,4 +70,5 @@ const makeRouter = (ctx: AppContext) => {
 
   return router
 }
+
 export default makeRouter

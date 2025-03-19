@@ -11,6 +11,11 @@ on:
       - 'swarm-feed-generator/**'
   workflow_dispatch: # Allow manual triggering
 
+# Note: This workflow requires the following secret to be configured in your repository:
+# - RENDER_DEPLOY_HOOK_URL: The Render deploy hook URL for your service
+# To add this secret, go to Settings > Secrets and variables > Actions > New repository secret
+# You can find your Render deploy hook URL in your Render dashboard under the service settings
+
 jobs:
   test:
     name: Test Feed Generator
