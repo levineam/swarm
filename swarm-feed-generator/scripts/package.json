@@ -1,12 +1,15 @@
 {
-  "name": "swarm-feed-generator-scripts",
+  "name": "swarm-feed-generator-verification-scripts",
   "version": "1.0.0",
-  "description": "Helper scripts for Swarm Feed Generator setup",
+  "description": "Verification scripts for Swarm Feed Generator",
   "private": true,
   "scripts": {
-    "get-token": "node get-bluesky-token.js"
+    "audit-did": "node audit-did-documents.js",
+    "test-methods": "node test-did-http-methods.js",
+    "verify-resolution": "node verify-did-resolution.js"
   },
   "dependencies": {
-    "@atproto/api": "^0.6.24"
+    "@atproto/api": "^0.10.1",
+    "axios": "^1.6.7"
   }
 }

@@ -1,0 +1,30 @@
+Comprehensive DID resolution fix: align DID/URI usage, add HTTP method support, improve caching
+
+This comprehensive fix addresses the persistent "could not resolve identity: did:web:swarm-feed-generator.onrender.com" error by implementing multiple improvements:
+
+1. Fixed DID/URI alignment:
+   - Updated describe-generator.ts to consistently use serviceDid for both the did field and feed URIs
+   - Ensured consistent DID usage across the codebase
+
+2. Enhanced HTTP method support:
+   - Added explicit support for GET, HEAD, and OPTIONS methods on DID document endpoints
+   - Fixed 405 "Method Not Allowed" errors that were preventing proper resolution
+   - Added proper CORS headers for OPTIONS responses
+
+3. Improved cache control:
+   - Set consistent cache-control headers across all endpoints
+   - Added proper content-type headers to ensure correct interpretation
+   - Implemented aggressive cache-busting to prevent stale responses
+
+4. Created verification tools:
+   - Added scripts to audit DID documents across endpoints
+   - Created tests for HTTP method support
+   - Implemented DID resolution verification using the AT Protocol client
+   - Added detailed documentation for using these tools
+
+5. Enhanced logging:
+   - Replaced console.log with structured logger
+   - Added detailed logging for all DID-related operations
+   - Included method information in logs for better debugging
+
+This fix takes a systematic approach to resolving the DID resolution issue by addressing all potential root causes. Verification scripts have been added to confirm the fix works properly and to prevent regression in the future. 

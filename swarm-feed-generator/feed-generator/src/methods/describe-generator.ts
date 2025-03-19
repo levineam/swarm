@@ -50,13 +50,13 @@ export default function describeGenerator(server: Server, ctx: AppContext) {
       logger.info('Publisher DID', { publisherDid: ctx.cfg.publisherDid })
       logger.info('Service DID', { serviceDid: ctx.cfg.serviceDid })
 
-      // IMPORTANT: Use the PUBLISHER DID for feed URIs as per AT Protocol specifications
-      // This ensures that the DID used in the response matches the account DID that owns the feed
-      const accountDid = ctx.cfg.publisherDid
+      // CRITICAL UPDATE: Use the SERVICE DID for feed URIs to maintain consistency
+      // This ensures that the DID used in feed URIs matches the DID document being served
+      const didToUse = ctx.cfg.serviceDid
 
       const feeds = Object.keys(algos).map((shortname) => ({
         uri: AtUri.make(
-          accountDid,
+          didToUse,
           'app.bsky.feed.generator',
           shortname,
         ).toString(),
@@ -71,7 +71,7 @@ export default function describeGenerator(server: Server, ctx: AppContext) {
       return {
         encoding: 'application/json',
         body: {
-          did: accountDid, // Use account DID as per AT Protocol specs
+          did: didToUse, // Use service DID consistently for both did field and feed URIs
           feeds,
         },
       }

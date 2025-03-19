@@ -63,4 +63,81 @@ Access tokens from Bluesky have a limited lifespan (typically a few hours). For 
 3. Updates the environment with the new token
 4. Retries the failed request
 
-For development purposes, you can manually regenerate the token using the script whenever needed. 
+For development purposes, you can manually regenerate the token using the script whenever needed.
+
+# Swarm Feed Generator Verification Scripts
+
+This directory contains scripts for verifying the proper configuration and operation of the Swarm Feed Generator service, with a focus on DID resolution and feed URI handling.
+
+## Background
+
+The "could not resolve identity: did:web:swarm-feed-generator.onrender.com" error has been a persistent issue in the Swarm social app. These scripts help diagnose and verify the resolution of this issue.
+
+## Scripts
+
+### 1. DID Document Audit (`audit-did-documents.js`)
+
+This script verifies that all DID document endpoints (`/.well-known/did.json` and `/did.json`) return identical, correctly formatted content with proper cache-control headers.
+
+```bash
+node audit-did-documents.js
+```
+
+### 2. HTTP Method Test (`test-did-http-methods.js`)
+
+This script tests that the DID document endpoints properly support all required HTTP methods (GET, HEAD, OPTIONS). The AT Protocol requires support for these methods for proper DID resolution.
+
+```bash
+node test-did-http-methods.js
+```
+
+### 3. DID Resolution Verification (`verify-did-resolution.js`)
+
+This script uses the AT Protocol client to verify DID resolution and feed URI accessibility, testing both the service DID and publisher DID.
+
+```bash
+node verify-did-resolution.js
+```
+
+## All-in-One Runner
+
+For convenience, a shell script is provided to run all verification steps:
+
+```bash
+chmod +x run-verification.sh
+./run-verification.sh
+```
+
+## Interpreting Results
+
+### Audit DID Documents
+
+- Both endpoints should return 200 status codes
+- Headers should include proper cache-control directives
+- Content should be identical between endpoints
+- Service type should be `BskyFeedGenerator`
+- Service ID should be `#bsky_fg`
+
+### HTTP Method Test
+
+- All methods (GET, HEAD, OPTIONS) should return successful status codes
+- No 405 "Method Not Allowed" errors should be present
+
+### DID Resolution Verification
+
+- Service DID resolution should succeed
+- Both feed URIs (with service DID and publisher DID) should resolve correctly
+
+## Common Issues and Solutions
+
+1. **405 Method Not Allowed**: The server doesn't support HEAD or OPTIONS methods. Update the Express routes to explicitly handle these methods.
+
+2. **DID Document Inconsistency**: The DID document content is different between endpoints. Use the update-all-did-documents.js script to ensure consistency.
+
+3. **Feed URI Mismatch**: The feed URIs in the describeFeedGenerator response use a different DID than the did field. Update describe-generator.ts to use the same DID consistently.
+
+4. **Cache-Control Headers Missing**: The DID document is being cached. Ensure cache-control headers are added to all responses.
+
+## After Verification
+
+If all verification scripts pass without errors, the DID resolution issue should be resolved. Deploy the updated code to Render.com with "Clear build cache & deploy" to ensure a fresh build with the new changes. 
