@@ -115,20 +115,30 @@ export class FeedGenerator {
       logger.info('Firehose health check called')
       const isConnected = firehose.isFirehoseConnected()
       const lastCursor = firehose.getLastCursor()
+      const connectionStats = firehose.getConnectionStats ? firehose.getConnectionStats() : null
       
       if (isConnected) {
-        logger.info('Firehose is connected', { lastCursor })
+        logger.info('Firehose is connected', { 
+          lastCursor,
+          connectionStats 
+        })
         res.status(200).json({
           status: 'connected',
           lastCursor: lastCursor,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          connectionStats
         })
       } else {
-        logger.warn('Firehose is disconnected', { lastCursor })
+        logger.warn('Firehose is disconnected', { 
+          lastCursor,
+          connectionStats 
+        })
         res.status(503).json({
           status: 'disconnected',
           lastCursor: lastCursor,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          connectionStats,
+          message: 'The firehose connection is currently down. The service will automatically attempt to reconnect.'
         })
       }
     })
@@ -146,6 +156,76 @@ export class FeedGenerator {
           publisherDid: cfg.publisherDid,
         },
       })
+    })
+
+    // Feed debug endpoint for diagnosing feed content issues
+    app.get('/debug/feed', async (req: express.Request, res: express.Response) => {
+      try {
+        logger.info('Feed debug endpoint called')
+        
+        // Get community member information
+        const { SWARM_COMMUNITY_MEMBERS } = await import('./swarm-community-members')
+        
+        // Query recent posts from the database
+        const recentPosts = await db
+          .selectFrom('post')
+          .selectAll()
+          .orderBy('indexedAt', 'desc')
+          .limit(20)
+          .execute()
+          
+        // Count posts by community members
+        const communityPosts = await db
+          .selectFrom('post')
+          .select([
+            'creator',
+            db.fn.count('uri').as('postCount')
+          ])
+          .where('creator', 'in', SWARM_COMMUNITY_MEMBERS)
+          .groupBy('creator')
+          .execute()
+        
+        // Get total post counts
+        const totalPostCount = await db
+          .selectFrom('post')
+          .select(db.fn.count('uri').as('count'))
+          .executeTakeFirst()
+          
+        // Check firehose status
+        const firehoseStatus = {
+          connected: firehose.isFirehoseConnected(),
+          lastCursor: firehose.getLastCursor(),
+          stats: firehose.getConnectionStats ? firehose.getConnectionStats() : null
+        }
+        
+        res.status(200).json({
+          message: 'Feed diagnostic information',
+          timestamp: new Date().toISOString(),
+          community: {
+            members: SWARM_COMMUNITY_MEMBERS,
+            memberCount: SWARM_COMMUNITY_MEMBERS.length,
+            postsPerMember: communityPosts
+          },
+          database: {
+            totalPosts: totalPostCount?.count || 0,
+            recentPosts: recentPosts.map(post => ({
+              uri: post.uri,
+              creator: post.creator,
+              indexedAt: post.indexedAt,
+              isCommunityMember: SWARM_COMMUNITY_MEMBERS.includes(post.creator)
+            }))
+          },
+          firehose: firehoseStatus
+        })
+      } catch (error) {
+        logger.error('Error in feed debug endpoint', {
+          error: error instanceof Error ? error.message : String(error)
+        })
+        res.status(500).json({
+          error: 'Failed to retrieve feed diagnostic information',
+          message: error instanceof Error ? error.message : String(error)
+        })
+      }
     })
 
     // XRPC test endpoint
@@ -362,6 +442,7 @@ export class FeedGenerator {
           <div class="endpoint">GET /health - Health check endpoint</div>
           <div class="endpoint">GET /health/firehose - Firehose health check</div>
           <div class="endpoint">GET /debug - Debug information</div>
+          <div class="endpoint">GET /debug/feed - Feed diagnostic information</div>
           <div class="endpoint">GET /xrpc-test - Test XRPC functionality</div>
           <div class="endpoint">GET /xrpc/app.bsky.feed.describeFeedGenerator - Feed generator metadata</div>
           <div class="endpoint">GET /xrpc/app.bsky.feed.getFeedSkeleton?feed={feedUri} - Get feed content</div>

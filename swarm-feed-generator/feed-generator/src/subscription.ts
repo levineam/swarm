@@ -7,6 +7,7 @@ import {
   SWARM_COMMUNITY_MEMBERS,
 } from './swarm-community-members'
 import { FirehoseSubscriptionBase, getOpsByType } from './util/subscription'
+import { logger } from './util/logger'
 
 export class FirehoseSubscription extends FirehoseSubscriptionBase {
   async handleEvent(evt: RepoEvent) {
@@ -14,11 +15,26 @@ export class FirehoseSubscription extends FirehoseSubscriptionBase {
 
     const ops = await getOpsByType(evt)
 
+    // Enhanced logging: Log firehose event details
+    logger.info('Firehose event received', {
+      repo: evt.repo,
+      seq: evt.seq,
+      time: new Date().toISOString(),
+      postsCount: ops.posts.creates.length,
+      likesCount: ops.likes.creates.length,
+      repostsCount: ops.reposts.creates.length,
+      followsCount: ops.follows.creates.length,
+    })
+
     // This logs the text of every post off the firehose.
     // Just for fun :)
     // Delete before actually using
     for (const post of ops.posts.creates) {
-      console.log(post.record.text)
+      logger.debug('Firehose post text', {
+        author: post.author,
+        text: post.record.text.substring(0, 100) + (post.record.text.length > 100 ? '...' : ''),
+        uri: post.uri
+      })
     }
 
     const postsToDelete = ops.posts.deletes.map((del) => del.uri)
@@ -40,30 +56,47 @@ export class FirehoseSubscription extends FirehoseSubscriptionBase {
       })
 
     // Filter posts for the Swarm community feed
-    console.log(
-      `[subscription] Processing ${ops.posts.creates.length} new posts from firehose`,
-    )
-    console.log(
-      `[subscription] Community members: ${SWARM_COMMUNITY_MEMBERS.length}`,
-      SWARM_COMMUNITY_MEMBERS,
-    )
+    logger.info('Processing new posts from firehose', {
+      count: ops.posts.creates.length,
+      communityMembersCount: SWARM_COMMUNITY_MEMBERS.length,
+    })
+    
+    // Enhanced logging: Log community members list for verification
+    logger.debug('Community members list', {
+      members: SWARM_COMMUNITY_MEMBERS
+    })
+
+    // Log all post authors for comparison
+    const allAuthors = ops.posts.creates.map(post => post.author);
+    logger.debug('All post authors in current batch', { authors: allAuthors });
 
     const swarmPostsToCreate = ops.posts.creates
       .filter((create) => {
-        // only posts from Swarm community members
-        const isMember = isSwarmCommunityMember(create.author)
+        // Enhanced logging: Log detailed DID comparison
+        const postAuthor = create.author;
+        
+        // Check if the author is in the community members list
+        const isMember = isSwarmCommunityMember(postAuthor);
+        
+        // Log the comparison result for debugging
+        logger.debug('Community member check', {
+          author: postAuthor,
+          isMember: isMember,
+          inList: SWARM_COMMUNITY_MEMBERS.includes(postAuthor),
+          exactMatch: SWARM_COMMUNITY_MEMBERS.some(member => member === postAuthor),
+          listContains: SWARM_COMMUNITY_MEMBERS.map(member => member.includes(postAuthor))
+        });
+        
         if (isMember) {
-          console.log(
-            `[subscription] Found post from community member: ${create.author}`,
-            {
-              uri: create.uri,
-              text:
-                create.record.text.substring(0, 50) +
-                (create.record.text.length > 50 ? '...' : ''),
-            },
-          )
+          logger.info('Found post from community member', {
+            author: create.author,
+            uri: create.uri,
+            text: create.record.text.substring(0, 50) + (create.record.text.length > 50 ? '...' : ''),
+            timestamp: new Date().toISOString()
+          });
         }
-        return isMember
+        
+        return isMember;
       })
       .map((create) => {
         // map Swarm community posts to a db row
@@ -75,24 +108,28 @@ export class FirehoseSubscription extends FirehoseSubscriptionBase {
         }
       })
 
-    console.log(
-      `[subscription] Found ${swarmPostsToCreate.length} posts from community members`,
-    )
+    logger.info('Posts from community members found', {
+      count: swarmPostsToCreate.length,
+      timestamp: new Date().toISOString()
+    })
 
     // Combine posts from both feeds
     const postsToCreate = [...alfPostsToCreate, ...swarmPostsToCreate]
 
     if (postsToDelete.length > 0) {
-      console.log(`[subscription] Deleting ${postsToDelete.length} posts`)
+      logger.info('Deleting posts', { count: postsToDelete.length })
       await this.db
         .deleteFrom('post')
         .where('uri', 'in', postsToDelete)
         .execute()
     }
     if (postsToCreate.length > 0) {
-      console.log(
-        `[subscription] Inserting ${postsToCreate.length} posts (${alfPostsToCreate.length} alf, ${swarmPostsToCreate.length} swarm)`,
-      )
+      logger.info('Inserting posts', {
+        totalCount: postsToCreate.length,
+        alfCount: alfPostsToCreate.length,
+        swarmCount: swarmPostsToCreate.length,
+        timestamp: new Date().toISOString()
+      })
       await this.db
         .insertInto('post')
         .values(postsToCreate)
