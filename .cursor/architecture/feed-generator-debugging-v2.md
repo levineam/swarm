@@ -157,14 +157,21 @@ Create a test post and trace it through the system:
    - DID resolution issue was fixed but feed content issue remains
 
 3. **Root Cause Analysis**:
-   - Posts from your DID exist in database
-   - DID is correctly included in `SWARM_COMMUNITY_MEMBERS` array
-   - API implementation may have issues with the query or post formatting
-   - Next steps: Need to trace a specific post and check feed algorithm implementation
+   - Posts from your DID exist in database ✅
+   - DID is correctly included in `SWARM_COMMUNITY_MEMBERS` array ✅
+   - API implementation has issues with the feed algorithm ❌
 
-4. **To Complete**:
-   - Implement and fix the trace-post.js script to complete post tracing
-   - Verify the exact path of posts in the feed generation system
+4. **Implementation & Testing**:
+   - Created and implemented an enhanced `trace-post.js` script for diagnostics
+   - Confirmed that our hack in `server.ts` to intercept feed requests isn't working properly
+   - The hack should be returning posts for your DID but is failing to execute properly
+
+5. **Found Issues**:
+   - The hack in `server.ts` Line 345-387 intercepts feed requests but may have issues
+   - The direct `GET` handler for `/xrpc/app.bsky.feed.getFeedSkeleton` is defined after XRPC routes are mounted
+   - The order of middleware registration might be causing the hack to be bypassed
+
+**Done**
 
 ### Step 3: Manual Post Addition
 

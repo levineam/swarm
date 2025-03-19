@@ -1,238 +1,172 @@
 #!/usr/bin/env node
 
 /**
- * Trace Post Script
+ * Post Tracer - Simple version
  *
- * This script traces a post through the feed generator system to verify its existence
- * and diagnose where it might be getting lost in the pipeline.
+ * This script traces a post through the system to diagnose feed issues
  */
 
-const { BskyAgent } = require('@atproto/api')
-const fs = require('fs')
+const sqlite3 = require('sqlite3').verbose()
+const axios = require('axios')
 const path = require('path')
-const { createDb } = require('../src/db')
+const fs = require('fs')
 
 // Configuration
-const BLUESKY_API = 'https://bsky.social'
-const DB_PATH =
-  process.env.DATABASE_PATH || path.join(__dirname, '../swarm-feed.db')
+const POST_URI = process.argv[2]
+const DB_PATH = path.join(__dirname, '../swarm-feed.db')
+const FEED_URI =
+  'at://did:web:swarm-feed-generator.onrender.com/app.bsky.feed.generator/swarm-community'
+const FEED_URL =
+  'https://swarm-feed-generator.onrender.com/xrpc/app.bsky.feed.getFeedSkeleton'
 
-// Get command line arguments
-const postUri = process.argv[2]
-
-if (!postUri) {
+// Check command line arguments
+if (!POST_URI) {
   console.error('Error: No post URI provided')
   console.log('Usage: node trace-post.js <post-uri>')
-  console.log(
-    'Example: node trace-post.js at://did:plc:abcdefg123456/app.bsky.feed.post/12345',
-  )
-  console.log('\nOptions:')
-  console.log('DATABASE_PATH - Environment variable to specify database path')
   process.exit(1)
 }
 
-async function main() {
-  console.log('=== Post Trace Diagnostic Tool ===')
-  console.log(`Tracing post: ${postUri}`)
-  console.log(`Database path: ${DB_PATH}`)
+// Extract creator DID from post URI
+const didMatch = POST_URI.match(/at:\/\/(did:[^\/]+)/)
+if (!didMatch) {
+  console.error('Error: Invalid post URI format')
+  process.exit(1)
+}
+const creatorDid = didMatch[1]
 
-  // Check if database exists
+// Main trace function
+async function tracePost() {
+  console.log('=== Post Trace Tool ===')
+  console.log(`Tracing post: ${POST_URI}`)
+  console.log(`Creator DID: ${creatorDid}`)
+
+  // Step 1: Check if database exists
   if (!fs.existsSync(DB_PATH)) {
-    console.error(`Error: Database file not found at ${DB_PATH}`)
-    console.log(
-      "Make sure you're running this script from the correct directory",
-    )
-    console.log('or set the DATABASE_PATH environment variable')
+    console.error(`Error: Database not found at ${DB_PATH}`)
     process.exit(1)
   }
 
-  try {
-    // STEP 1: Check if the post exists in the Bluesky network
-    console.log('\n1. Checking if post exists in Bluesky...')
-    const agent = new BskyAgent({ service: BLUESKY_API })
+  // Step 2: Connect to database
+  const db = new sqlite3.Database(DB_PATH, sqlite3.OPEN_READONLY, (err) => {
+    if (err) {
+      console.error(`Database connection error: ${err.message}`)
+      process.exit(1)
+    }
+    console.log(`Connected to database at ${DB_PATH}`)
 
-    try {
-      // Get post from Bluesky
-      const postResponse = await agent.getPost({ uri: postUri })
-      const post = postResponse.data
+    // Step 3: Check if post exists in database
+    db.get('SELECT * FROM post WHERE uri = ?', [POST_URI], (err, row) => {
+      if (err) {
+        console.error(`Query error: ${err.message}`)
+        db.close()
+        process.exit(1)
+      }
 
-      console.log('✅ Post exists in Bluesky:')
-      console.log(`  Author: @${post.author.handle} (${post.author.did})`)
-      console.log(`  Posted: ${post.indexedAt}`)
-      console.log(
-        `  Text: ${post.record.text.substring(0, 100)}${
-          post.record.text.length > 100 ? '...' : ''
-        }`,
-      )
-      console.log(`  CID: ${post.cid}`)
-
-      // STEP 2: Check if the post exists in the database
-      console.log('\n2. Checking if post exists in database...')
-
-      // Connect to the database
-      const db = createDb(`sqlite:${DB_PATH}`)
-
-      const existingPost = await db
-        .selectFrom('post')
-        .selectAll()
-        .where('uri', '=', postUri)
-        .executeTakeFirst()
-
-      if (existingPost) {
-        console.log('✅ Post exists in database:')
-        console.log(`  URI: ${existingPost.uri}`)
-        console.log(`  CID: ${existingPost.cid}`)
-        console.log(`  Creator: ${existingPost.creator}`)
-        console.log(`  Indexed At: ${existingPost.indexedAt}`)
+      console.log('\n=== Database Check ===')
+      if (row) {
+        console.log('✅ Post found in database:')
+        console.log(`- URI: ${row.uri}`)
+        console.log(`- CID: ${row.cid}`)
+        console.log(`- Creator: ${row.creator}`)
+        console.log(`- Indexed at: ${row.indexedAt}`)
       } else {
         console.log('❌ Post NOT found in database')
-        console.log(
-          'This suggests the firehose missed this post or it was filtered out.',
-        )
-        console.log('You can add it manually with:')
-        console.log(`  node manual-add-post.js ${postUri}`)
-        // Continue with further checks even if not in DB
+        console.log('Recommendation: Add post manually with:')
+        console.log(`node scripts/manual-add-post.js "${POST_URI}"`)
       }
 
-      // STEP 3: Check if the post creator is a community member
-      console.log('\n3. Checking if author is a community member...')
-
-      // Import the community members array
-      const communityMembersPath = path.join(
-        __dirname,
-        '../src/swarm-community-members.ts',
-      )
-
-      try {
-        // Read the file content
-        const content = fs.readFileSync(communityMembersPath, 'utf8')
-
-        // Extract the array content using regex
-        const arrayMatch = content.match(
-          /export const SWARM_COMMUNITY_MEMBERS: string\[\] = \[([\s\S]*?)\]/,
-        )
-
-        if (arrayMatch) {
-          const arrayContent = arrayMatch[1]
-
-          // Simple check for the author DID
-          const isCommunityMember = arrayContent.includes(post.author.did)
-
-          if (isCommunityMember) {
-            console.log(`✅ ${post.author.did} IS a community member`)
-            console.log('The post should be eligible for inclusion in the feed')
-          } else {
-            console.log(`❌ ${post.author.did} is NOT a community member`)
-            console.log('To make this post appear in the feed:')
-            console.log(`1. Add the author to the community members list:`)
-            console.log(
-              `   node add-community-member.js "${post.author.did}" "${post.author.handle}"`,
-            )
-            console.log('2. Deploy the updated code to Render.com')
+      // Step 4: Count creator's posts
+      db.get(
+        'SELECT COUNT(*) as count FROM post WHERE creator = ?',
+        [creatorDid],
+        (err, countRow) => {
+          if (err) {
+            console.error(`Count query error: ${err.message}`)
+            db.close()
+            process.exit(1)
           }
-        } else {
-          console.log('⚠️ Could not parse community members array')
-        }
-      } catch (error) {
-        console.error('Error checking community membership:', error.message)
-      }
 
-      // STEP 4: Check if post appears in the feed
-      console.log('\n4. Checking if post appears in feed...')
+          console.log(`\nCreator has ${countRow.count} posts in the database`)
 
-      try {
-        // Get feed endpoint
-        const feedEndpoint =
-          'at://did:web:swarm-feed-generator.onrender.com/app.bsky.feed.generator/swarm-community'
-        console.log(`Checking feed: ${feedEndpoint}`)
-
-        // Try to get feed
-        const feedResponse = await agent.app.bsky.feed.getFeedSkeleton({
-          feed: feedEndpoint,
-        })
-
-        if (feedResponse.success) {
-          // Check if our post is in the feed
-          const feedItems = feedResponse.data.feed
-          const postInFeed = feedItems.some((item) => item.post === postUri)
-
-          if (postInFeed) {
-            console.log('✅ Post is included in the feed!')
-          } else {
-            console.log('❌ Post is NOT in the feed')
-            console.log('Reasons this could happen:')
-            console.log(
-              '  - Post is too old (outside the time window for the feed)',
+          // Step 5: Check if in community members config
+          try {
+            const communityMembersPath = path.join(
+              __dirname,
+              '../src/swarm-community-members.ts',
             )
-            console.log('  - Feed algorithm is filtering it out')
-            console.log('  - Recent database issues')
+            const communityMembersContent = fs.readFileSync(
+              communityMembersPath,
+              'utf8',
+            )
+            const didInConfig = communityMembersContent.includes(creatorDid)
 
-            // If we have feed items, show a sample
-            if (feedItems.length > 0) {
-              console.log('\nSample of what IS in the feed:')
-              await Promise.all(
-                feedItems.slice(0, 3).map(async (item, index) => {
-                  try {
-                    const itemResp = await agent.getPost({ uri: item.post })
-                    console.log(
-                      `  ${index + 1}. ${
-                        itemResp.data.author.handle
-                      }: ${itemResp.data.record.text.substring(0, 50)}...`,
-                    )
-                  } catch (e) {
-                    console.log(
-                      `  ${index + 1}. ${item.post} (Could not fetch details)`,
-                    )
-                  }
-                }),
+            console.log('\n=== Community Membership ===')
+            console.log(
+              didInConfig
+                ? '✅ Creator is in community members config'
+                : '❌ Creator is NOT in community members config',
+            )
+
+            if (!didInConfig) {
+              console.log(
+                'Recommendation: Add creator to community members with:',
               )
-            } else {
-              console.log('\nThe feed is completely empty.')
+              console.log(
+                `node scripts/add-community-member.js "${creatorDid}" "handle"`,
+              )
             }
+
+            // Step 6: Check feed endpoint
+            checkFeedEndpoint(POST_URI).then(() => {
+              // Close database connection when all checks are done
+              db.close()
+              console.log('\n=== Trace complete ===')
+            })
+          } catch (error) {
+            console.error(`Error checking community members: ${error.message}`)
+            db.close()
           }
-        } else {
-          console.log('❌ Could not fetch feed')
-        }
-      } catch (error) {
-        console.log('❌ Error fetching feed:', error.message)
-      }
+        },
+      )
+    })
+  })
+}
 
-      // STEP 5: Summary and recommendations
-      console.log('\n===== DIAGNOSIS SUMMARY =====')
+// Helper function to check feed endpoint
+async function checkFeedEndpoint(postUri) {
+  console.log('\n=== Feed Endpoint Check ===')
+  try {
+    const feedUrl = `${FEED_URL}?feed=${encodeURIComponent(FEED_URI)}&limit=100`
+    console.log(`Querying: ${feedUrl}`)
 
-      if (!existingPost) {
-        console.log('PRIMARY ISSUE: Post not in database')
-        console.log('RECOMMENDED ACTION: Add post to database manually')
-        console.log(`  node manual-add-post.js ${postUri}`)
-      } else if (!isCommunityMember) {
-        console.log('PRIMARY ISSUE: Author not in community member list')
-        console.log('RECOMMENDED ACTION: Add author to community members')
-        console.log(
-          `  node add-community-member.js "${post.author.did}" "${post.author.handle}"`,
-        )
-      } else if (!postInFeed) {
-        console.log('PRIMARY ISSUE: Post in database but not appearing in feed')
-        console.log('RECOMMENDED ACTIONS:')
-        console.log(
-          '1. Check feed algorithm implementation in src/algos/swarm-community.ts',
-        )
-        console.log('2. Verify feed generator service is running properly')
-        console.log('3. Consider redeploying the feed generator service')
+    const response = await axios.get(feedUrl)
+
+    if (response.status === 200 && response.data && response.data.feed) {
+      const feed = response.data.feed
+      console.log(`Feed returned ${feed.length} posts`)
+
+      const postInFeed = feed.some((item) => item.post === postUri)
+      if (postInFeed) {
+        console.log('✅ Post IS in feed output')
       } else {
-        console.log(
-          '✅ ALL CHECKS PASSED! Post exists and is included in the feed.',
-        )
+        console.log('❌ Post is NOT in feed output')
+        console.log('\nPotential issues:')
+        console.log('1. Feed algorithm implementation (swarm-community.ts)')
+        console.log('2. Caching issues with feed endpoint')
+        console.log('3. Query parameters for community members')
       }
-    } catch (error) {
-      console.error('Error fetching post from Bluesky:', error.message)
-      console.log('Make sure the post URI is correct and the post exists')
+    } else {
+      console.log(
+        `❌ Feed endpoint returned unexpected response: ${response.status}`,
+      )
     }
   } catch (error) {
-    console.error('Error:', error.message)
+    console.log(`❌ Error querying feed endpoint: ${error.message}`)
   }
 }
 
-main().catch((err) => {
-  console.error('Unhandled error:', err)
+// Run the trace
+tracePost().catch((error) => {
+  console.error('Unhandled error:', error)
   process.exit(1)
 })
