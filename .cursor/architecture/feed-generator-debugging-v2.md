@@ -408,6 +408,18 @@ This approach continues our systematic debugging by focusing on the connection b
 
 **Done** - The root cause of the empty feed issue has been identified and a solution has been implemented. The backend API and frontend code are working correctly, but the feed is not being saved to user preferences, which is required for it to display.
 
+## Swarm Community Purpose
+
+The Swarm Feed Generator is designed to serve a specific purpose:
+
+1. **Community Focus**: It's intended to be a curated feed of posts from a specific community
+2. **Initial Configuration**: Currently has only one community member (the creator)
+3. **Expansion Plan**: Will add more community members once the feed functionality is verified
+4. **Audience**: Meant to be displayed to all users of the Swarm Social frontend
+5. **Discovery**: Should provide a community experience showcasing selected content
+
+This clarification is important because it helps explain why the feed appears empty to most users - they aren't seeing their own posts in the feed because they aren't yet part of the community. Instead, they should be seeing the community creator's posts.
+
 ## Latest Findings
 
 We've accessed https://swarm-social.onrender.com/ and observed:
@@ -431,14 +443,24 @@ We've accessed https://swarm-social.onrender.com/ and observed:
    - Created a script (`add-swarm-feed-to-preferences.js`) to directly add the Swarm feed to the user's preferences
    - This script authenticates with Bluesky and updates the user's preferences to include and pin the Swarm feed
    - Once added to preferences, the feed should display correctly for that user
-   - Longer-term solution would be to update the frontend code to automatically save the feed to preferences
+   - This script needs to be run by each user who wants to view the Swarm community feed
+   - Command to run the script:
+   ```bash
+   cd swarm-feed-generator/feed-generator
+   node scripts/add-swarm-feed-to-preferences.js
+   ```
 
-6. **Next Steps**:
-   - Run the `add-swarm-feed-to-preferences.js` script for affected users
-   - Consider a frontend code update to automatically add the feed to user preferences
-   - Update the onboarding process to include the Swarm feed in initial preferences
+6. **Immediate Action Required**:
+   - As the community creator, run the `add-swarm-feed-to-preferences.js` script with your Bluesky credentials
+   - Verify that after running the script, you can see posts in the feed
+   - This is the fastest way to get the feed working while a more permanent solution is implemented
 
-The Swarm feed generator is now functionally complete, with both the backend API and frontend code working correctly. The only remaining issue is getting the feed added to user preferences, which can be resolved using the provided script.
+7. **Longer-Term Solutions**:
+   - Update the frontend code to automatically add the Swarm feed to user preferences on first visit
+   - Consider creating a community onboarding process that adds the feed to user preferences
+   - Implement a frontend update that shows the community feed even if not in saved preferences
+
+The Swarm feed generator is functionally complete, but requires the preferences fix to be visible to users. Running the script is the immediate solution to get the feed working for individual users.
 
 ## Implementation Details
 
