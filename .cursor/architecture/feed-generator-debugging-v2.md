@@ -183,6 +183,29 @@ node scripts/manual-add-post.js <post-uri>
 
 Verify the post appears in the feed after addition.
 
+### Updated Plan Based on Step 2 Findings
+
+Based on the post tracing analysis, we've identified that the issue is not with missing posts in the database, but rather with the feed endpoint implementation. The key issue is that our hack to intercept feed requests is being bypassed due to middleware ordering in the server.ts file. 
+
+Our updated plan for Step 3:
+
+1. **Fix the Feed Endpoint Hack**:
+   - Move the feed endpoint hack in server.ts to a position before the XRPC routes are mounted
+   - Ensure proper error handling and logging
+   - Fix any other issues with the hack implementation
+
+2. **Test the Fix Locally**:
+   - Start the server locally
+   - Verify that the feed endpoint returns posts from your DID
+   - Ensure proper caching headers are set
+
+3. **Deploy and Verify**:
+   - Push changes to GitHub
+   - Deploy to Render.com
+   - Verify the fix in production
+
+This approach directly addresses the root cause identified in Step 2, bypassing the need to manually add posts since they already exist in the database.
+
 ### Step 4: Community Member Expansion
 
 If needed, add more community members:
