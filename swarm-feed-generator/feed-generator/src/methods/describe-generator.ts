@@ -44,8 +44,47 @@ export default function describeGenerator(server: Server, ctx: AppContext) {
       return
     }
 
-    server.app.bsky.feed.describeFeedGenerator(async () => {
-      logger.info('describeFeedGenerator endpoint called')
+    server.app.bsky.feed.describeFeedGenerator(async (reqCtx) => {
+      // Log the request details including headers for debugging CORS issues
+      logger.info('describeFeedGenerator endpoint called', { 
+        headers: reqCtx.req.headers, 
+        origin: reqCtx.req.headers.origin,
+        method: reqCtx.req.method
+      })
+      
+      // Manually set CORS headers for this specific endpoint
+      if (reqCtx.res) {
+        const allowedOrigins = [
+          'https://bsky.app', 
+          'https://staging.bsky.app',
+          'http://localhost:19006', 
+          'http://localhost:19007', 
+          'http://localhost:8080',
+          'http://localhost:3000'
+        ];
+        
+        const origin = reqCtx.req.headers.origin;
+        
+        // Set the appropriate Access-Control-Allow-Origin header
+        if (origin && allowedOrigins.includes(origin)) {
+          reqCtx.res.setHeader('Access-Control-Allow-Origin', origin);
+        } else {
+          // Fallback to a wildcard or the main domain
+          reqCtx.res.setHeader('Access-Control-Allow-Origin', 'https://bsky.app');
+        }
+        
+        // Set other CORS headers
+        reqCtx.res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        reqCtx.res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
+        reqCtx.res.setHeader('Access-Control-Allow-Credentials', 'true');
+        reqCtx.res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
+        
+        logger.info('CORS headers set for response', {
+          origin: reqCtx.res.getHeader('Access-Control-Allow-Origin'),
+          method: reqCtx.req.method
+        });
+      }
+
       logger.info('Available algorithms', { algorithms: Object.keys(algos) })
       logger.info('Publisher DID', { publisherDid: ctx.cfg.publisherDid })
       logger.info('Service DID', { serviceDid: ctx.cfg.serviceDid })

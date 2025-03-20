@@ -51,7 +51,46 @@ export default function feedGeneration(server: Server, ctx: AppContext) {
     }
 
     server.app.bsky.feed.getFeedSkeleton(async (reqCtx) => {
-      logger.info('getFeedSkeleton endpoint called', { params: reqCtx.params })
+      // Log the request details including headers for debugging CORS issues
+      logger.info('getFeedSkeleton endpoint called', { 
+        params: reqCtx.params,
+        headers: reqCtx.req.headers, 
+        origin: reqCtx.req.headers.origin,
+        method: reqCtx.req.method
+      })
+
+      // Manually set CORS headers for this specific endpoint
+      if (reqCtx.res) {
+        const allowedOrigins = [
+          'https://bsky.app', 
+          'https://staging.bsky.app',
+          'http://localhost:19006', 
+          'http://localhost:19007', 
+          'http://localhost:8080',
+          'http://localhost:3000'
+        ];
+        
+        const origin = reqCtx.req.headers.origin;
+        
+        // Set the appropriate Access-Control-Allow-Origin header
+        if (origin && allowedOrigins.includes(origin)) {
+          reqCtx.res.setHeader('Access-Control-Allow-Origin', origin);
+        } else {
+          // Fallback to a wildcard or the main domain
+          reqCtx.res.setHeader('Access-Control-Allow-Origin', 'https://bsky.app');
+        }
+        
+        // Set other CORS headers
+        reqCtx.res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        reqCtx.res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
+        reqCtx.res.setHeader('Access-Control-Allow-Credentials', 'true');
+        reqCtx.res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
+        
+        logger.info('CORS headers set for response', {
+          origin: reqCtx.res.getHeader('Access-Control-Allow-Origin'),
+          method: reqCtx.req.method
+        });
+      }
 
       const { params } = reqCtx
       const feedUri = new AtUri(params.feed)

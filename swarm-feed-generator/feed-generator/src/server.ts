@@ -73,7 +73,28 @@ export class FeedGenerator {
       },
     )
 
-    app.use(cors())
+    // Configure CORS with proper settings
+    const corsOptions = {
+      origin: [
+        'https://bsky.app', 
+        'https://staging.bsky.app',
+        'http://localhost:19006', 
+        'http://localhost:19007', 
+        'http://localhost:8080',
+        'http://localhost:3000'
+      ],
+      methods: ['GET', 'POST', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+      credentials: true,
+      maxAge: 86400 // 24 hours
+    };
+    
+    // Log CORS configuration
+    logger.info('CORS Configuration', corsOptions);
+    
+    // Apply CORS middleware before other routes
+    app.use(cors(corsOptions));
+    
     app.use(express.json())
 
     // Cache-busting middleware to force revalidation
@@ -271,6 +292,7 @@ export class FeedGenerator {
     // Create XRPC server
     logger.info('Creating XRPC server...')
     try {
+      // Create XRPC server
       const xrpcServer = createXrpcServer()
       logger.info('XRPC server created successfully')
       logger.debug('XRPC server object keys', { keys: Object.keys(xrpcServer).join(', ') })
@@ -311,6 +333,43 @@ export class FeedGenerator {
       feedGeneration(xrpcServer, ctx)
       describeGenerator(xrpcServer, ctx)
       logger.info('XRPC methods registered successfully')
+
+      // Add a global OPTIONS handler for CORS preflight requests
+      app.options('*', (req, res) => {
+        logger.info('Handling OPTIONS preflight request', {
+          url: req.url,
+          origin: req.headers.origin,
+          method: req.method
+        });
+        
+        const allowedOrigins = [
+          'https://bsky.app', 
+          'https://staging.bsky.app',
+          'http://localhost:19006', 
+          'http://localhost:19007', 
+          'http://localhost:8080',
+          'http://localhost:3000'
+        ];
+        
+        const origin = req.headers.origin;
+        
+        // Set the appropriate Access-Control-Allow-Origin header
+        if (origin && allowedOrigins.includes(origin)) {
+          res.setHeader('Access-Control-Allow-Origin', origin);
+        } else {
+          // Fallback to a wildcard or the main domain
+          res.setHeader('Access-Control-Allow-Origin', 'https://bsky.app');
+        }
+        
+        // Set other CORS headers
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+        res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
+        
+        // Send 204 response for preflight requests
+        res.status(204).end();
+      });
 
       // Add a direct hack for the getFeedSkeleton endpoint BEFORE mounting the XRPC router
       app.get('/xrpc/app.bsky.feed.getFeedSkeleton', async (req: express.Request, res: express.Response, next: express.NextFunction) => {
