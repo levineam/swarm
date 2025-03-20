@@ -312,6 +312,77 @@ export class FeedGenerator {
       describeGenerator(xrpcServer, ctx)
       logger.info('XRPC methods registered successfully')
 
+      // Add a direct hack for the getFeedSkeleton endpoint BEFORE mounting the XRPC router
+      app.get('/xrpc/app.bsky.feed.getFeedSkeleton', async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+        try {
+          logger.info('HACK: Directly intercepting getFeedSkeleton request', { 
+            query: req.query,
+            params: req.params,
+            url: req.url
+          })
+          
+          const feedParam = req.query.feed as string
+          if (feedParam && feedParam.includes('swarm-community')) {
+            logger.info('HACK: Detected swarm-community feed request, returning hard-coded posts')
+            
+            // Always return at least these hardcoded posts to start (regardless of DB)
+            const hardcodedPosts = [
+              { post: 'at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.post/3lknkc2zbqm26' },
+              { post: 'at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.post/3lkofmrbhpc2z' },
+              { post: 'at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.post/3lkohfnnlui2x' }
+            ];
+            
+            // Also try to find any real posts from your DID
+            try {
+              const YOUR_DID = 'did:plc:ouadmsyvsfcpkxg3yyz4trqi';
+              
+              // Log database stats
+              const stats = await ctx.db
+                .selectFrom('post')
+                .select(ctx.db.fn.count('uri').as('count'))
+                .executeTakeFirst();
+                
+              logger.info(`HACK: Database has ${stats?.count || 0} total posts`);
+              
+              // Check for your posts specifically
+              const yourPosts = await ctx.db
+                .selectFrom('post')
+                .where('creator', '=', YOUR_DID)
+                .selectAll()
+                .execute();
+                
+              logger.info(`HACK: Found ${yourPosts.length} posts for your DID`);
+              
+              // Add any found posts to our hardcoded list
+              if (yourPosts.length > 0) {
+                const dbPosts = yourPosts.map(post => ({ post: post.uri }));
+                hardcodedPosts.push(...dbPosts);
+                logger.info(`HACK: Added ${dbPosts.length} posts from database`);
+              }
+            } catch (dbErr) {
+              logger.error('HACK: Error querying database', {
+                error: dbErr instanceof Error ? dbErr.message : String(dbErr)
+              });
+            }
+            
+            // Return combined posts
+            logger.info(`HACK: Returning ${hardcodedPosts.length} total posts`);
+            res.json({ feed: hardcodedPosts });
+            return;
+          }
+          
+          // Continue with normal processing if not swarm-community feed
+          next()
+        } catch (err) {
+          logger.error('HACK: Error in direct feed handler', { 
+            error: err instanceof Error ? err.message : String(err),
+            stack: err instanceof Error ? err.stack : undefined
+          })
+          // Continue with normal processing
+          next()
+        }
+      });
+
       // Mount XRPC routes
       logger.info('Mounting XRPC routes...')
       if (xrpcServer.xrpc && xrpcServer.xrpc.router) {
@@ -339,59 +410,6 @@ export class FeedGenerator {
     
     this.firehose.run(this.cfg.subscriptionReconnectDelay)
     logger.info('Firehose subscription started')
-
-    // Add a direct hack for the getFeedSkeleton endpoint
-    this.app.get('/xrpc/app.bsky.feed.getFeedSkeleton', async (req: express.Request, res: express.Response, next: express.NextFunction) => {
-      try {
-        logger.info('HACK: Directly intercepting getFeedSkeleton request', { 
-          query: req.query,
-          params: req.params
-        })
-        
-        const feedParam = req.query.feed as string
-        if (feedParam && feedParam.includes('swarm-community')) {
-          logger.info('HACK: Detected swarm-community feed request, returning hard-coded posts')
-          
-          // First check if we have posts from your DID in the DB
-          const posts = await this.db
-            .selectFrom('post')
-            .where('creator', '=', 'did:plc:ouadmsyvsfcpkxg3yyz4trqi')
-            .selectAll()
-            .orderBy('indexedAt', 'desc')
-            .limit(10)
-            .execute()
-          
-          logger.info(`HACK: Found ${posts.length} posts for your DID`)
-          
-          if (posts.length > 0) {
-            // Return the actual posts if we find them
-            const feed = posts.map(post => ({ post: post.uri }))
-            res.json({ feed })
-            return
-          }
-          
-          // Fallback to hardcoded posts if DB query returns nothing
-          logger.info('HACK: No posts found, returning hard-coded fallback posts')
-          res.json({
-            feed: [
-              { post: 'at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.post/3lknkc2zbqm26' },
-              { post: 'at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.post/3lkofmrbhpc2z' },
-              { post: 'at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.post/3lkohfnnlui2x' }
-            ]
-          })
-          return
-        }
-        
-        // Continue with normal processing if not swarm-community feed
-        next()
-      } catch (err) {
-        logger.error('HACK: Error in direct feed handler', { 
-          error: err instanceof Error ? err.message : String(err)
-        })
-        // Continue with normal processing
-        next()
-      }
-    })
 
     // Use the PORT environment variable provided by Render.com if available
     const port = process.env.PORT
