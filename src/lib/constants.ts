@@ -131,7 +131,7 @@ export const VIDEO_FEED_URI =
 export const STAGING_VIDEO_FEED_URI =
   'at://did:plc:q6gjnaw2blty4crticxkmujt/app.bsky.feed.generator/bsky-video-staging'
 export const SWARM_FEED_URI =
-  'at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.generator/swarm-community?cb=20250321'
+  'at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.generator/swarm-community'
 export const VIDEO_FEED_URIS = [VIDEO_FEED_URI, STAGING_VIDEO_FEED_URI]
 export const DISCOVER_SAVED_FEED = {
   type: 'feed',
