@@ -188,3 +188,6 @@ export const SUPPORTED_MIME_TYPES = [
 ] as const
 
 export type SupportedMimeTypes = (typeof SUPPORTED_MIME_TYPES)[number]
+
+// Swarm CORS Proxy URL
+export const SWARM_API_PROXY = 'https://swarm-cors-proxy.onrender.com'
