@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Proxy Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            line-height: 1.6;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 20px;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Simple Proxy Test</h1>
+    
+    <div>
+        <button id="testProxyButton">Test Proxy</button>
+        <button id="testDirectButton">Test Direct</button>
+    </div>
+    
+    <h2>Response:</h2>
+    <pre id="response">Click a button to test...</pre>
+    
+    <h2>Headers:</h2>
+    <pre id="headers"></pre>
+    
+    <h2>Request Details:</h2>
+    <pre id="requestInfo"></pre>
+    
+    <script>
+        const responseEl = document.getElementById('response');
+        const headersEl = document.getElementById('headers');
+        const requestInfoEl = document.getElementById('requestInfo');
+        
+        async function makeRequest(url) {
+            responseEl.textContent = 'Loading...';
+            headersEl.textContent = '';
+            
+            const requestDetails = {
+                url: url,
+                headers: {
+                    'Accept': 'application/json',
+                    'Origin': 'http://localhost:8080'
+                }
+            };
+            
+            requestInfoEl.textContent = JSON.stringify(requestDetails, null, 2);
+            
+            try {
+                console.log('Making request to:', url);
+                
+                const response = await fetch(url, {
+                    headers: requestDetails.headers
+                });
+                
+                console.log('Response status:', response.status);
+                
+                // Display headers
+                const headers = {};
+                response.headers.forEach((value, key) => {
+                    headers[key] = value;
+                    console.log(`Header: ${key} = ${value}`);
+                });
+                headersEl.textContent = JSON.stringify(headers, null, 2);
+                
+                // Display response
+                const data = await response.json();
+                responseEl.textContent = JSON.stringify(data, null, 2);
+                
+            } catch (error) {
+                console.error('Error making request:', error);
+                responseEl.textContent = `Error: ${error.message}`;
+            }
+        }
+        
+        document.getElementById('testProxyButton').addEventListener('click', () => {
+            makeRequest('http://localhost:3000/xrpc/app.bsky.feed.describeFeedGenerator');
+        });
+        
+        document.getElementById('testDirectButton').addEventListener('click', () => {
+            makeRequest('https://swarm-feed-generator.onrender.com/xrpc/app.bsky.feed.describeFeedGenerator');
+        });
+    </script>
+</body>
+</html> 

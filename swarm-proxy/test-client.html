@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swarm Feed CORS Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            line-height: 1.6;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #0088cc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 20px;
+        }
+        button:hover {
+            background-color: #006699;
+        }
+        .container {
+            margin-bottom: 20px;
+        }
+        h2 {
+            margin-top: 20px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>Swarm Feed CORS Test</h1>
+    
+    <div>
+        <button id="testDirectFeed">Test Direct API Call</button>
+        <button id="testProxyFeed">Test Proxy API Call</button>
+    </div>
+    
+    <div class="container">
+        <h2>Feed Generator Info</h2>
+        <pre id="feedInfo">No data yet. Click a button to test.</pre>
+    </div>
+    
+    <div class="container">
+        <h2>Feed Content</h2>
+        <pre id="feedContent">No data yet. Click a button to test.</pre>
+    </div>
+    
+    <div class="container">
+        <h2>Posts</h2>
+        <div id="posts"></div>
+    </div>
+
+    <script>
+        // Swarm feed URI
+        const SWARM_FEED_URI = 'at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.generator/swarm-community';
+        
+        // Direct feed generator URL
+        const DIRECT_URL = 'https://swarm-feed-generator.onrender.com';
+        
+        // Proxy URL
+        const PROXY_URL = 'http://localhost:3000';
+        
+        document.getElementById('testDirectFeed').addEventListener('click', () => {
+            testFeed(DIRECT_URL);
+        });
+        
+        document.getElementById('testProxyFeed').addEventListener('click', () => {
+            testFeed(PROXY_URL);
+        });
+        
+        async function testFeed(baseUrl) {
+            const feedInfoEl = document.getElementById('feedInfo');
+            const feedContentEl = document.getElementById('feedContent');
+            const postsEl = document.getElementById('posts');
+            
+            // Reset displays
+            feedInfoEl.textContent = 'Loading...';
+            feedContentEl.textContent = 'Loading...';
+            postsEl.innerHTML = '';
+            
+            try {
+                // Get feed generator info
+                const infoResponse = await fetch(`${baseUrl}/xrpc/app.bsky.feed.describeFeedGenerator`, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'Origin': 'https://bsky.app'
+                    }
+                });
+                
+                const corsHeaders = {
+                    'Access-Control-Allow-Origin': infoResponse.headers.get('Access-Control-Allow-Origin') || 'Not set',
+                    'Access-Control-Allow-Methods': infoResponse.headers.get('Access-Control-Allow-Methods') || 'Not set',
+                    'Access-Control-Allow-Headers': infoResponse.headers.get('Access-Control-Allow-Headers') || 'Not set',
+                    'Access-Control-Allow-Credentials': infoResponse.headers.get('Access-Control-Allow-Credentials') || 'Not set'
+                };
+                
+                const infoData = await infoResponse.json();
+                
+                feedInfoEl.innerHTML = `<div>Status: ${infoResponse.status}</div>
+<div>CORS Headers:</div>
+<div>- Access-Control-Allow-Origin: ${corsHeaders['Access-Control-Allow-Origin']}</div>
+<div>- Access-Control-Allow-Methods: ${corsHeaders['Access-Control-Allow-Methods']}</div>
+<div>- Access-Control-Allow-Headers: ${corsHeaders['Access-Control-Allow-Headers']}</div>
+<div>- Access-Control-Allow-Credentials: ${corsHeaders['Access-Control-Allow-Credentials']}</div>
+
+<div>Response Data:</div>
+${JSON.stringify(infoData, null, 2)}`;
+                
+                // Get feed content
+                const feedResponse = await fetch(
+                    `${baseUrl}/xrpc/app.bsky.feed.getFeedSkeleton?feed=${encodeURIComponent(SWARM_FEED_URI)}`,
+                    {
+                        headers: {
+                            'Accept': 'application/json',
+                            'Origin': 'https://bsky.app'
+                        }
+                    }
+                );
+                
+                const feedCorsHeaders = {
+                    'Access-Control-Allow-Origin': feedResponse.headers.get('Access-Control-Allow-Origin') || 'Not set',
+                    'Access-Control-Allow-Methods': feedResponse.headers.get('Access-Control-Allow-Methods') || 'Not set',
+                    'Access-Control-Allow-Headers': feedResponse.headers.get('Access-Control-Allow-Headers') || 'Not set',
+                    'Access-Control-Allow-Credentials': feedResponse.headers.get('Access-Control-Allow-Credentials') || 'Not set'
+                };
+                
+                const feedData = await feedResponse.json();
+                
+                feedContentEl.innerHTML = `<div>Status: ${feedResponse.status}</div>
+<div>CORS Headers:</div>
+<div>- Access-Control-Allow-Origin: ${feedCorsHeaders['Access-Control-Allow-Origin']}</div>
+<div>- Access-Control-Allow-Methods: ${feedCorsHeaders['Access-Control-Allow-Methods']}</div>
+<div>- Access-Control-Allow-Headers: ${feedCorsHeaders['Access-Control-Allow-Headers']}</div>
+<div>- Access-Control-Allow-Credentials: ${feedCorsHeaders['Access-Control-Allow-Credentials']}</div>
+
+<div>Posts Found: ${feedData.feed.length}</div>`;
+                
+                // Display posts
+                postsEl.innerHTML = '';
+                feedData.feed.forEach((post, index) => {
+                    const postElement = document.createElement('div');
+                    postElement.style.border = '1px solid #ddd';
+                    postElement.style.padding = '10px';
+                    postElement.style.margin = '10px 0';
+                    postElement.innerHTML = `<h3>Post ${index + 1}</h3>
+                        <div>URI: ${post.post}</div>`;
+                    postsEl.appendChild(postElement);
+                });
+                
+            } catch (error) {
+                console.error(error);
+                feedInfoEl.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                feedContentEl.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html> 

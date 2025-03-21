@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: swarm-cors-proxy
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: FEED_GENERATOR_URL
+        value: https://swarm-feed-generator.onrender.com
+    autoDeploy: true 
