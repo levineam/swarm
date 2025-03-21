@@ -1,31 +1,31 @@
 import React from 'react'
 import {StyleSheet, View} from 'react-native'
+import {AppBskyActorDefs, RichText} from '@atproto/api'
 import {msg} from '@lingui/macro'
 import {useLingui} from '@lingui/react'
 import {useFocusEffect} from '@react-navigation/native'
-import {AppBskyActorDefs, RichText} from '@atproto/api'
 
 import {usePalette} from '#/lib/hooks/usePalette'
 import {CommonNavigatorParams, NativeStackScreenProps} from '#/lib/routes/types'
-import {PLATFORM_DID} from '#/config/did'
-import {FEED_URI} from '#/server/feed_generator'
-import {useSession} from '#/state/session'
-import {useSetMinimalShellMode} from '#/state/shell'
-import {FeedPage} from '#/view/com/feeds/FeedPage'
 import {SavedFeedSourceInfo} from '#/state/queries/feed'
 import {FeedDescriptor} from '#/state/queries/post-feed'
+import {useSetMinimalShellMode} from '#/state/shell'
+import {FeedPage} from '#/view/com/feeds/FeedPage'
+import {Button} from '#/view/com/util/forms/Button'
 import {Text} from '#/view/com/util/text/Text'
-import {Header} from '#/components/Layout'
+import {SwarmFeedTest} from '#/view/debug/SwarmFeedTest'
 import {Swarm_Stroke2_Corner0_Rounded} from '#/components/icons/Swarm'
-import { Link } from '#/view/com/util/Link'
+import {Header} from '#/components/Layout'
+import {PLATFORM_DID} from '#/config/did'
+import {FEED_URI} from '#/server/feed_generator'
 
 type Props = NativeStackScreenProps<CommonNavigatorParams, 'SwarmFeed'>
 
 export function SwarmFeedScreen({navigation}: Props) {
   const pal = usePalette('default')
   const {_} = useLingui()
-  const {hasSession} = useSession()
   const setMinimalShellMode = useSetMinimalShellMode()
+  const [showTest, setShowTest] = React.useState(false)
 
   // Reset minimal shell mode when screen is focused
   useFocusEffect(
@@ -52,7 +52,9 @@ export function SwarmFeedScreen({navigation}: Props) {
       cid: '',
       avatar: 'https://swarm.com/avatar.png',
       displayName: 'Swarm',
-      description: new RichText({text: 'The main community feed of the Swarm platform'}),
+      description: new RichText({
+        text: 'The main community feed of the Swarm platform',
+      }),
       creatorDid: PLATFORM_DID,
       creatorHandle: 'swarm.bsky.social',
       likeCount: 0,
@@ -72,7 +74,10 @@ export function SwarmFeedScreen({navigation}: Props) {
   const renderEmptyState = React.useCallback(() => {
     return (
       <View style={[styles.emptyContainer, pal.view]}>
-        <Swarm_Stroke2_Corner0_Rounded size="xl" style={[pal.text, styles.emptyIcon]} />
+        <Swarm_Stroke2_Corner0_Rounded
+          size="xl"
+          style={[pal.text, styles.emptyIcon]}
+        />
         <Text style={[pal.text, styles.emptyTitle]}>
           {_(msg`Welcome to the Swarm Community`)}
         </Text>
@@ -96,26 +101,46 @@ export function SwarmFeedScreen({navigation}: Props) {
     )
   }, [_, pal])
 
+  const handleSettingsPress = () => {
+    navigation.navigate('SwarmCommunitySettings')
+  }
+
   return (
     <View style={[styles.container, pal.view]}>
       <Header.Outer>
         <Header.BackButton onPress={() => navigation.goBack()} />
         <Header.Content>
           <Header.TitleText>{_(msg`Swarm Community`)}</Header.TitleText>
-          <Link to="SwarmCommunitySettings" label="Settings">
-            <Text style={{ color: pal.palette.primary }}>Settings</Text>
-          </Link>
+          <Button
+            type="default"
+            label="Settings"
+            onPress={handleSettingsPress}
+            style={styles.settingsButton}
+          />
         </Header.Content>
       </Header.Outer>
-      <FeedPage
-        testID="swarmFeedPage"
-        isPageFocused={true}
-        isPageAdjacent={false}
-        feed={feedDescriptor}
-        feedInfo={feedInfo}
-        renderEmptyState={renderEmptyState}
-        renderEndOfFeed={renderEndOfFeed}
-      />
+
+      <View style={styles.toggleContainer}>
+        <Button
+          type="default"
+          label={showTest ? 'Show Regular Feed' : 'Test Feed API'}
+          onPress={() => setShowTest(!showTest)}
+        />
+      </View>
+
+      {showTest ? (
+        <SwarmFeedTest />
+      ) : (
+        <FeedPage
+          testID="swarmFeedPage"
+          isPageFocused={true}
+          isPageAdjacent={false}
+          feed={feedDescriptor}
+          feedInfo={feedInfo}
+          renderEmptyState={renderEmptyState}
+          renderEndOfFeed={renderEndOfFeed}
+        />
+      )}
     </View>
   )
 }
@@ -123,6 +148,15 @@ export function SwarmFeedScreen({navigation}: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  toggleContainer: {
+    padding: 8,
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  settingsButton: {
+    marginLeft: 8,
   },
   emptyContainer: {
     padding: 20,
@@ -151,4 +185,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
   },
-}) 
+})
