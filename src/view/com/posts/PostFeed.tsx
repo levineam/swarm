@@ -4,10 +4,8 @@ import {
   AppState,
   Dimensions,
   ListRenderItemInfo,
-  Pressable,
   StyleProp,
   StyleSheet,
-  Text,
   View,
   ViewStyle,
 } from 'react-native'
@@ -16,11 +14,7 @@ import {msg} from '@lingui/macro'
 import {useLingui} from '@lingui/react'
 import {useQueryClient} from '@tanstack/react-query'
 
-import {
-  DISCOVER_FEED_URI,
-  KNOWN_SHUTDOWN_FEEDS,
-  SWARM_API_PROXY,
-} from '#/lib/constants'
+import {DISCOVER_FEED_URI, KNOWN_SHUTDOWN_FEEDS} from '#/lib/constants'
 import {useInitialNumToRender} from '#/lib/hooks/useInitialNumToRender'
 import {logEvent} from '#/lib/statsig/statsig'
 import {logger} from '#/logger'
@@ -575,39 +569,6 @@ let PostFeed = ({
     fetchNextPage()
   }, [fetchNextPage])
 
-  // Add temporary test function
-  const testProxyAPI = React.useCallback(async () => {
-    try {
-      const response = await fetch(
-        `${SWARM_API_PROXY}/xrpc/app.bsky.feed.describeFeedGenerator`,
-      )
-      const data = await response.json()
-      console.log('PROXY TEST RESPONSE:', data)
-      alert('Proxy Test Result: ' + JSON.stringify(data, null, 2))
-    } catch (error: any) {
-      console.error('PROXY TEST ERROR:', error)
-      alert('Proxy Test Error: ' + error.message)
-    }
-  }, [])
-
-  // This is a temporary function to test the feed generator directly
-  const testFeedGeneratorAPI = React.useCallback(async () => {
-    try {
-      // Test direct request to feed generator
-      const response = await fetch(
-        'https://swarm-feed-generator.onrender.com/xrpc/app.bsky.feed.describeFeedGenerator',
-      )
-      const data = await response.json()
-      console.log('DIRECT TEST RESPONSE:', data)
-      alert('Direct Test Result: ' + JSON.stringify(data, null, 2))
-    } catch (error: any) {
-      console.error('DIRECT TEST ERROR:', error)
-      alert('Direct Test Error: ' + error.message)
-    }
-  }, [])
-
-  const isSwarmFeed = feed === 'swarm'
-
   // rendering
   // =
 
@@ -751,19 +712,6 @@ let PostFeed = ({
 
   return (
     <View testID={testID} style={style}>
-      {isSwarmFeed && (
-        <View style={styles.testButtonContainer}>
-          <Text style={styles.testButtonTitle}>Swarm Feed API Tests</Text>
-          <View style={styles.testButtonsRow}>
-            <Pressable accessibilityRole="button" style={styles.testButton} onPress={testProxyAPI}>
-              <Text style={styles.testButtonText}>Test Proxy API</Text>
-            </Pressable>
-            <Pressable accessibilityRole="button" style={styles.testButton} onPress={testFeedGeneratorAPI}>
-              <Text style={styles.testButtonText}>Test Direct API</Text>
-            </Pressable>
-          </View>
-        </View>
-      )}
       <List
         testID={testID ? `${testID}-flatlist` : undefined}
         ref={scrollElRef}
@@ -802,33 +750,6 @@ export {PostFeed}
 
 const styles = StyleSheet.create({
   feedFooter: {paddingTop: 20},
-  testButtonContainer: {
-    padding: 10,
-    backgroundColor: '#f0f0f0',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
-  },
-  testButtonTitle: {
-    fontWeight: 'bold',
-    marginBottom: 5,
-  },
-  testButtonsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
-  },
-  testButton: {
-    backgroundColor: '#0070ff',
-    padding: 10,
-    borderRadius: 4,
-    minWidth: 120,
-    alignItems: 'center',
-  },
-  testButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
 })
 
 function isThreadParentAt<T>(arr: Array<T>, i: number) {
