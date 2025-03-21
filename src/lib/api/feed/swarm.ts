@@ -70,8 +70,13 @@ export class SwarmFeedAPI implements FeedAPI {
         url += `&cursor=${encodeURIComponent(cursor)}`
       }
 
+      console.log('SwarmFeedAPI: Requesting URL', url)
+
       // Fetch feed skeleton directly
       const response = await fetch(url)
+
+      // Log response status
+      console.log('SwarmFeedAPI: Skeleton response status', response.status)
 
       if (!response.ok) {
         console.error('SwarmFeedAPI: Failed to fetch feed skeleton', {
@@ -85,35 +90,82 @@ export class SwarmFeedAPI implements FeedAPI {
       console.log('SwarmFeedAPI: Got feed skeleton', {
         feedLength: skeletonData.feed?.length || 0,
         cursor: skeletonData.cursor,
+        skeleton: JSON.stringify(skeletonData).substring(0, 200), // Show start of the data
       })
 
       // If there are no posts, return an empty feed
       if (!skeletonData.feed || skeletonData.feed.length === 0) {
+        console.log(
+          'SwarmFeedAPI: Feed skeleton is empty, returning empty feed',
+        )
         return {feed: []}
       }
 
       // Extract post URIs from the skeleton
       const postUris = skeletonData.feed.map((item: any) => item.post)
-
-      // Fetch the full post data using the ATProto API
-      const postsResponse = await this.agent.app.bsky.feed.getPosts({
-        uris: postUris,
+      console.log('SwarmFeedAPI: Hydrating posts', {
+        uris: postUris.slice(0, 3), // Log first 3 URIs for debugging
+        count: postUris.length,
       })
 
-      // Build a properly formatted feed response
-      const feed = skeletonData.feed
-        .map((item: any) => {
-          const post = postsResponse.data.posts.find(p => p.uri === item.post)
-          return {
-            post: post,
-            reason: undefined,
-          }
+      try {
+        // Fetch the full post data using the ATProto API
+        console.log('SwarmFeedAPI: Calling agent.app.bsky.feed.getPosts')
+        const postsResponse = await this.agent.app.bsky.feed.getPosts({
+          uris: postUris,
         })
-        .filter((item: any) => item.post) // Filter out any undefined posts
 
-      return {
-        cursor: skeletonData.cursor,
-        feed,
+        console.log('SwarmFeedAPI: Hydration response', {
+          success: postsResponse.success,
+          postsCount: postsResponse.data.posts.length,
+        })
+
+        // Check if we got fewer posts than we requested
+        if (postsResponse.data.posts.length < postUris.length) {
+          console.warn('SwarmFeedAPI: Some posts not found during hydration', {
+            requestedCount: postUris.length,
+            receivedCount: postsResponse.data.posts.length,
+          })
+        }
+
+        // Build a properly formatted feed response
+        const feed = skeletonData.feed
+          .map((item: any) => {
+            const post = postsResponse.data.posts.find(p => p.uri === item.post)
+            if (!post) {
+              console.log('SwarmFeedAPI: Missing post data for URI', item.post)
+              return null
+            }
+            return {
+              post: post,
+              reason: undefined,
+            }
+          })
+          .filter((item: any) => item && item.post) // Filter out any undefined posts
+
+        console.log('SwarmFeedAPI: Final feed response', {
+          feedLength: feed.length,
+          cursor: skeletonData.cursor,
+        })
+
+        // Log authentication state
+        console.log('SwarmFeedAPI: Authentication state', {
+          hasSession: !!this.agent.session,
+          sessionDid: this.agent.session?.did ?? 'none',
+        })
+
+        return {
+          cursor: skeletonData.cursor,
+          feed,
+        }
+      } catch (hydrationError) {
+        console.error('SwarmFeedAPI: Post hydration failed', hydrationError)
+        // Log auth state on error
+        console.log('SwarmFeedAPI: Auth state during error', {
+          hasSession: !!this.agent.session,
+          sessionDid: this.agent.session?.did ?? 'none',
+        })
+        return {feed: []}
       }
     } catch (error) {
       console.error('SwarmFeedAPI: Error fetching feed', error)

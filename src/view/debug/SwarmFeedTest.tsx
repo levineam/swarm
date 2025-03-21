@@ -1,124 +1,216 @@
-import React from 'react'
-import {Button, ScrollView, StyleSheet,Text, View} from 'react-native'
-
+import {useState} from 'react'
 import {
-  describeFeedGenerator,
-  getFeedSkeleton,
-} from '../../lib/api/feed-generator'
-import {usePalette} from '../../lib/hooks/usePalette'
+  ActivityIndicator,
+  Button,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native'
+import {AppBskyFeedDefs} from '@atproto/api'
 
-// The Swarm Feed URI
-const SWARM_FEED_URI =
-  'at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.generator/swarm-community'
+import {SwarmFeedAPI} from '#/lib/api/feed/swarm'
+import {SWARM_FEED_URI} from '#/lib/constants'
+import {usePalette} from '#/lib/hooks/usePalette'
+import {useAgent} from '#/state/session'
 
 export function SwarmFeedTest() {
   const pal = usePalette('default')
-  const [feedData, setFeedData] = React.useState(null)
-  const [describeData, setDescribeData] = React.useState(null)
-  const [error, setError] = React.useState(null)
-  const [loading, setLoading] = React.useState(false)
+  const agent = useAgent()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [feedSkeleton, setFeedSkeleton] = useState<any | null>(null)
+  const [hydratedPosts, setHydratedPosts] = useState<
+    AppBskyFeedDefs.FeedViewPost[] | null
+  >(null)
 
-  const testDescribe = async () => {
+  const testFeedSkeletonDirect = async () => {
     setLoading(true)
     setError(null)
+    setFeedSkeleton(null)
+    setHydratedPosts(null)
+
     try {
-      // Test describe generator
-      const describe = await describeFeedGenerator()
-      console.log('Describe result:', describe)
-      setDescribeData(describe)
-    } catch (err: any) {
-      console.error('Describe test failed:', err)
-      setError(`Describe failed: ${err.message}`)
+      // Direct fetch of feed skeleton
+      const url = `https://swarm-feed-generator.onrender.com/xrpc/app.bsky.feed.getFeedSkeleton?feed=${encodeURIComponent(
+        SWARM_FEED_URI,
+      )}&limit=10`
+
+      console.log('Testing direct feed skeleton fetch:', url)
+      const response = await fetch(url)
+
+      if (!response.ok) {
+        throw new Error(
+          `Feed skeleton request failed: ${response.status} ${response.statusText}`,
+        )
+      }
+
+      const data = await response.json()
+      console.log('Feed skeleton data:', data)
+      setFeedSkeleton(data)
+
+      // Now try to hydrate the posts
+      if (data.feed && data.feed.length > 0) {
+        const postUris = data.feed.map((item: any) => item.post)
+
+        console.log('Hydrating posts with uris:', postUris)
+        const postsResponse = await agent.app.bsky.feed.getPosts({
+          uris: postUris,
+        })
+
+        console.log('Posts hydration response:', postsResponse)
+
+        // Create feed view posts
+        const feedViewPosts = data.feed
+          .map((item: any) => {
+            const post = postsResponse.data.posts.find(p => p.uri === item.post)
+            return post
+              ? {
+                  post,
+                  reason: undefined,
+                }
+              : null
+          })
+          .filter(Boolean)
+
+        console.log('Hydrated feed posts:', feedViewPosts)
+        setHydratedPosts(feedViewPosts as AppBskyFeedDefs.FeedViewPost[])
+      }
+    } catch (err) {
+      console.error('Test failed:', err)
+      setError(err instanceof Error ? err.message : String(err))
     } finally {
       setLoading(false)
     }
   }
 
-  const testFeed = async () => {
+  const testSwarmFeedAPI = async () => {
     setLoading(true)
     setError(null)
+    setFeedSkeleton(null)
+    setHydratedPosts(null)
+
     try {
-      // Test get feed skeleton
-      const feed = await getFeedSkeleton(SWARM_FEED_URI)
-      console.log('Feed result:', feed)
-      setFeedData(feed)
-    } catch (err: any) {
-      console.error('Feed test failed:', err)
-      setError(`Feed failed: ${err.message}`)
+      // Test the SwarmFeedAPI implementation
+      console.log('Testing SwarmFeedAPI implementation')
+
+      // Create the API instance
+      const api = new SwarmFeedAPI({
+        agent,
+        feedUri: SWARM_FEED_URI,
+      })
+
+      // Log auth state
+      console.log('Auth state:', {
+        hasSession: !!agent.session,
+        sessionDid: agent.session?.did ?? 'none',
+      })
+
+      // Fetch the feed
+      const feedResponse = await api.fetch({
+        cursor: undefined,
+        limit: 10,
+      })
+
+      console.log('SwarmFeedAPI response:', feedResponse)
+
+      // Set the hydrated posts
+      setHydratedPosts(feedResponse.feed)
+    } catch (err) {
+      console.error('SwarmFeedAPI test failed:', err)
+      setError(err instanceof Error ? err.message : String(err))
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <View style={[styles.container, pal.view]}>
-      <Text style={[styles.title, pal.text]}>Swarm Feed Proxy Test</Text>
+    <View style={[styles.container, {backgroundColor: pal.colors.background}]}>
+      <Text style={[styles.title, {color: pal.colors.text}]}>
+        Swarm Feed Debug Test
+      </Text>
 
       <View style={styles.buttonContainer}>
         <Button
-          title={loading ? 'Testing...' : 'Test Describe Generator'}
-          onPress={testDescribe}
+          title="Test Direct Fetch + Hydration"
+          onPress={testFeedSkeletonDirect}
           disabled={loading}
-          color="#0070ff"
         />
-
+        <View style={styles.buttonSpacer} />
         <Button
-          title={loading ? 'Testing...' : 'Test Feed Skeleton'}
-          onPress={testFeed}
+          title="Test SwarmFeedAPI"
+          onPress={testSwarmFeedAPI}
           disabled={loading}
-          color="#0070ff"
         />
       </View>
 
+      {loading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={pal.colors.link} />
+          <Text style={{color: pal.colors.text, marginTop: 10}}>
+            Loading...
+          </Text>
+        </View>
+      )}
+
       {error && (
         <View
-          style={[styles.errorContainer, {backgroundColor: pal.colors.error}]}>
-          <Text style={styles.errorText}>Error: {error}</Text>
+          style={[
+            styles.errorContainer,
+            {backgroundColor: pal.colors.backgroundError},
+          ]}>
+          <Text style={{color: pal.colors.textError}}>Error: {error}</Text>
         </View>
       )}
 
-      {describeData && (
-        <View style={styles.resultContainer}>
-          <Text style={[styles.resultTitle, pal.text]}>
-            Feed Generator Description:
-          </Text>
-          <ScrollView
-            style={[
-              styles.scrollView,
-              {backgroundColor: pal.colors.backgroundLight},
-            ]}>
-            <Text style={pal.text}>
-              {JSON.stringify(describeData, null, 2)}
+      <ScrollView style={styles.resultsContainer}>
+        {feedSkeleton && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, {color: pal.colors.text}]}>
+              Feed Skeleton Response:
             </Text>
-          </ScrollView>
-        </View>
-      )}
+            <Text
+              style={[styles.codeText, {color: pal.colors.textLight}]}
+              selectable>
+              {JSON.stringify(feedSkeleton, null, 2)}
+            </Text>
+          </View>
+        )}
 
-      {feedData && (
-        <View style={styles.resultContainer}>
-          <Text style={[styles.resultTitle, pal.text]}>
-            Feed Data Retrieved:
-          </Text>
-          <Text style={[pal.text]}>
-            Found {feedData.feed?.length || 0} posts
-          </Text>
-          <ScrollView
-            style={[
-              styles.scrollView,
-              {backgroundColor: pal.colors.backgroundLight},
-            ]}>
-            <Text style={pal.text}>{JSON.stringify(feedData, null, 2)}</Text>
-          </ScrollView>
-        </View>
-      )}
+        {hydratedPosts && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, {color: pal.colors.text}]}>
+              Hydrated Posts ({hydratedPosts.length}):
+            </Text>
+            {hydratedPosts.map((post, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.postContainer,
+                  {borderColor: pal.colors.border},
+                ]}>
+                <Text style={{color: pal.colors.text, fontWeight: 'bold'}}>
+                  {post.post.author.displayName || post.post.author.handle}
+                </Text>
+                <Text style={{color: pal.colors.text}}>
+                  {typeof post.post.record === 'object' &&
+                  'text' in post.post.record
+                    ? (post.post.record.text as string)
+                    : 'No text content'}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+      </ScrollView>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
     flex: 1,
+    padding: 16,
   },
   title: {
     fontSize: 20,
@@ -127,29 +219,39 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 20,
+    marginBottom: 16,
+  },
+  buttonSpacer: {
+    width: 16,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    marginVertical: 20,
   },
   errorContainer: {
     padding: 16,
     borderRadius: 8,
-    marginVertical: 16,
+    marginBottom: 16,
   },
-  errorText: {
-    color: 'white',
-  },
-  resultContainer: {
-    marginTop: 16,
+  resultsContainer: {
     flex: 1,
   },
-  resultTitle: {
+  section: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 8,
   },
-  scrollView: {
-    padding: 8,
+  codeText: {
+    fontFamily: 'monospace',
+    fontSize: 12,
+  },
+  postContainer: {
+    padding: 12,
+    borderWidth: 1,
     borderRadius: 8,
-    flex: 1,
+    marginBottom: 12,
   },
 })
