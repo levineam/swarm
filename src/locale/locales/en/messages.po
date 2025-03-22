@@ -7186,7 +7186,7 @@ msgstr ""
 #: src/view/com/swarm/SwarmCommunityBtn.tsx:51
 #: src/view/screens/Feeds.tsx:748
 #: src/view/screens/Feeds.tsx:783
-#: src/view/screens/SwarmFeed.tsx:104
+#: src/view/screens/SwarmFeed.tsx:113
 msgid "Swarm Community"
 msgstr ""
 
@@ -7620,7 +7620,7 @@ msgstr ""
 msgid "This is important in case you ever need to change your email or reset your password."
 msgstr ""
 
-#: src/view/screens/SwarmFeed.tsx:81
+#: src/view/screens/SwarmFeed.tsx:86
 msgid "This is where you'll see posts from the Swarm community. Add the Swarm community label to your posts to have them appear here."
 msgstr ""
 
@@ -8572,7 +8572,7 @@ msgstr ""
 msgid "Welcome back!"
 msgstr ""
 
-#: src/view/screens/SwarmFeed.tsx:77
+#: src/view/screens/SwarmFeed.tsx:82
 msgid "Welcome to the Swarm Community"
 msgstr ""
 
@@ -8996,7 +8996,7 @@ msgstr ""
 msgid "You've found some people to follow"
 msgstr ""
 
-#: src/view/screens/SwarmFeed.tsx:93
+#: src/view/screens/SwarmFeed.tsx:98
 msgid "You've reached the end of the Swarm feed"
 msgstr ""
 
