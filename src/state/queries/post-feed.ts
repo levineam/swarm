@@ -23,12 +23,13 @@ import {HomeFeedAPI} from '#/lib/api/feed/home'
 import {LikesFeedAPI} from '#/lib/api/feed/likes'
 import {ListFeedAPI} from '#/lib/api/feed/list'
 import {MergeFeedAPI} from '#/lib/api/feed/merge'
+import {SwarmFeedAPI} from '#/lib/api/feed/swarm'
 import {FeedAPI, ReasonFeedSource} from '#/lib/api/feed/types'
 import {aggregateUserInterests} from '#/lib/api/feed/utils'
 import {FeedTuner, FeedTunerFn} from '#/lib/api/feed-manip'
 import {
-  DISCOVER_FEED_URI,
   BSKY_FEED_OWNER_DIDS,
+  DISCOVER_FEED_URI,
   SWARM_FEED_URI,
 } from '#/lib/constants'
 import {logger} from '#/logger'
@@ -472,11 +473,13 @@ function createApi({
       }
     }
   } else if (feedDesc === 'swarm') {
-    // Use the custom feed API with our Swarm feed URI
-    return new CustomFeedAPI({
+    // Debug log when creating SwarmFeedAPI
+    console.log('createApi: Creating SwarmFeedAPI for Swarm feed')
+
+    // Use our special SwarmFeedAPI that uses the proxy
+    return new SwarmFeedAPI({
       agent,
-      feedParams: {feed: SWARM_FEED_URI},
-      userInterests,
+      feedUri: SWARM_FEED_URI,
     })
   } else if (feedDesc.startsWith('author')) {
     const [_, actor, filter] = feedDesc.split('|')
