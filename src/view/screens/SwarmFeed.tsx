@@ -1,10 +1,11 @@
 import React, { useState } from 'react'
 import {StyleSheet, View, Text, Pressable} from 'react-native'
-import {AppBskyActorDefs, RichText} from '@atproto/api'
+import {RichText} from '@atproto/api'
 import {msg} from '@lingui/macro'
 import {useLingui} from '@lingui/react'
 import {NativeStackScreenProps} from '@react-navigation/native-stack'
 import {useQueryClient} from '@tanstack/react-query'
+import {AppBskyActorDefs} from '@atproto/api'
 
 import {CommonNavigatorParams} from '#/lib/routes/types'
 import {PLATFORM_DID} from '#/config/did'
@@ -13,6 +14,33 @@ import {DEBUG} from '#/lib/constants'
 import {isWeb} from '#/platform/detection'
 import {SwarmFeedTest} from '../debug/SwarmFeedTest'
 import {FeedPage} from '#/view/com/feeds/FeedPage'
+import {SavedFeedSourceInfo} from '#/state/queries/feed'
+
+// Create a minimal mock version of the SavedFeedSourceInfo that works without the full hydration
+const MOCK_SWARM_FEED_INFO: SavedFeedSourceInfo = {
+  type: 'feed',
+  uri: FEED_URI,
+  feedDescriptor: `feedgen|${FEED_URI}`,
+  route: {
+    href: '/swarm',
+    name: 'SwarmFeed',
+    params: {},
+  },
+  cid: '',
+  avatar: '',
+  displayName: 'Swarm Community',
+  description: new RichText({text: 'Swarm Community Feed'}),
+  creatorDid: PLATFORM_DID,
+  creatorHandle: 'swarm.bsky.social',
+  likeCount: 0,
+  likeUri: '',
+  contentMode: undefined,
+  savedFeed: {
+    type: 'feed',
+    value: FEED_URI,
+    pinned: true,
+  } as AppBskyActorDefs.SavedFeed,
+}
 
 type Props = NativeStackScreenProps<CommonNavigatorParams, 'SwarmFeed'>
 
@@ -52,12 +80,12 @@ export function SwarmFeedScreen({
   }
 
   // Rendering utilities for feed states
-  const feedDescriptor = React.useMemo(
+  const feedMessages = React.useMemo(
     () => ({
       isEmptyList: msg`No posts found. Check back soon!`,
       endOfList: msg`You've reached the end of the Swarm Feed`,
     }),
-    [feedDescriptor],
+    [], 
   )
 
   const renderEmptyState = React.useCallback(() => {
@@ -116,7 +144,7 @@ export function SwarmFeedScreen({
   return (
     <View style={styles.container}>
       {showTest ? (
-        <SwarmFeedTest onClose={() => setShowTest(false)} />
+        <SwarmFeedTest />
       ) : (
         <>
           {renderFeedHeader()}
@@ -125,11 +153,7 @@ export function SwarmFeedScreen({
             isPageFocused={true}
             isPageAdjacent={false}
             feed="swarm"
-            feedInfo={{
-              isDEV: true,
-              PINNED: true,
-              value: 'swarm',
-            }}
+            feedInfo={MOCK_SWARM_FEED_INFO}
             renderEmptyState={renderEmptyState}
             renderEndOfFeed={renderEndOfFeed}
           />
