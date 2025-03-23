@@ -1,177 +1,139 @@
-import React from 'react'
-import {StyleSheet, View, Text, TouchableOpacity} from 'react-native'
+import React, { useState } from 'react'
+import {StyleSheet, View, Text, Pressable} from 'react-native'
 import {AppBskyActorDefs, RichText} from '@atproto/api'
 import {msg} from '@lingui/macro'
 import {useLingui} from '@lingui/react'
-import {useFocusEffect, useNavigation} from '@react-navigation/native'
-import {useQuery, useQueryClient} from '@tanstack/react-query'
-import {FontAwesomeIcon} from '@fortawesome/react-native-fontawesome'
-import {faWrench} from '@fortawesome/free-solid-svg-icons'
+import {NativeStackScreenProps} from '@react-navigation/native-stack'
+import {useQueryClient} from '@tanstack/react-query'
 
-import {usePalette} from '#/lib/hooks/usePalette'
-import {CommonNavigatorParams, NativeStackScreenProps} from '#/lib/routes/types'
-import {SavedFeedSourceInfo} from '#/state/queries/feed'
-import {FeedDescriptor} from '#/state/queries/post-feed'
-import {useSetMinimalShellMode} from '#/state/shell'
-import {FeedPage} from '#/view/com/feeds/FeedPage'
-import {Button} from '#/view/com/util/forms/Button'
-import {SwarmFeedTest} from '#/view/debug/SwarmFeedTest'
-import {Swarm_Stroke2_Corner0_Rounded} from '#/components/icons/Swarm'
-import {Header} from '#/components/Layout'
+import {CommonNavigatorParams} from '#/lib/routes/types'
 import {PLATFORM_DID} from '#/config/did'
 import {FEED_URI} from '#/server/feed_generator'
+import {DEBUG} from '#/lib/constants'
+import {isWeb} from '#/platform/detection'
+import {SwarmFeedTest} from '../debug/SwarmFeedTest'
+import {FeedPage} from '#/view/com/feeds/FeedPage'
 
 type Props = NativeStackScreenProps<CommonNavigatorParams, 'SwarmFeed'>
 
-export function SwarmFeedScreen({navigation}: Props) {
-  const pal = usePalette('default')
+export function SwarmFeedScreen({
+  navigation,
+  route,
+}: Props) {
   const {_} = useLingui()
-  const setMinimalShellMode = useSetMinimalShellMode()
   const [showTest, setShowTest] = React.useState(false)
   const queryClient = useQueryClient()
+  const [showDebug, setShowDebug] = useState(false)
+  const [useDirect, setUseDirect] = useState(true)
 
   // Reset minimal shell mode when screen is focused
-  useFocusEffect(
-    React.useCallback(() => {
-      setMinimalShellMode(false)
-      return () => {}
-    }, [setMinimalShellMode]),
-  )
+  React.useEffect(() => {
+    const resetMinimal = () => {
+      navigation.setOptions({presentation: 'card'})
+    }
+    const unsubscribe = navigation.addListener('focus', resetMinimal)
+    return unsubscribe
+  }, [navigation])
 
-  // The feed descriptor for the Swarm feed
-  const feedDescriptor: FeedDescriptor = `feedgen|${FEED_URI}`
+  React.useEffect(() => {
+    // Set debug option based on the toggle
+    DEBUG.SWARM_BYPASS_HYDRATION = useDirect
+    if (DEBUG.SWARM_LOG_RESPONSES) {
+      console.log('SwarmFeed: Setting bypass hydration to', useDirect)
+    }
+  }, [useDirect])
 
-  // Feed info for the Swarm feed
-  const feedInfo = React.useMemo<SavedFeedSourceInfo>(
+  const toggleDebug = () => {
+    setShowDebug(!showDebug)
+  }
+
+  const toggleDirect = () => {
+    setUseDirect(!useDirect)
+  }
+
+  // Rendering utilities for feed states
+  const feedDescriptor = React.useMemo(
     () => ({
-      type: 'feed',
-      uri: FEED_URI,
-      feedDescriptor,
-      route: {
-        href: '/swarm',
-        name: 'SwarmFeed',
-        params: {},
-      },
-      cid: '',
-      avatar: 'https://swarm.com/avatar.png',
-      displayName: 'Swarm',
-      description: new RichText({
-        text: 'The main community feed of the Swarm platform',
-      }),
-      creatorDid: PLATFORM_DID,
-      creatorHandle: 'swarm.bsky.social',
-      likeCount: 0,
-      likeUri: undefined,
-      contentMode: 'posts',
-      savedFeed: {
-        id: 'swarm-feed',
-        type: 'feed',
-        value: FEED_URI,
-        pinned: true,
-      } as AppBskyActorDefs.SavedFeed,
+      isEmptyList: msg`No posts found. Check back soon!`,
+      endOfList: msg`You've reached the end of the Swarm Feed`,
     }),
     [feedDescriptor],
   )
 
-  // Render empty state when there are no posts
   const renderEmptyState = React.useCallback(() => {
     return (
-      <View style={[styles.emptyContainer, pal.view]}>
-        <Swarm_Stroke2_Corner0_Rounded
-          size="xl"
-          style={[pal.text, styles.emptyIcon]}
-        />
-        <Text style={[pal.text, styles.emptyTitle]}>
-          {_(msg`Welcome to the Swarm Community`)}
+      <View>
+        <Text style={{textAlign: 'center', margin: 10, fontStyle: 'italic'}}>
+          {_(msg`No posts found. Check back soon!`)}
         </Text>
-        <Text style={[pal.textLight, styles.emptyDesc]}>
-          {_(
-            msg`This is where you'll see posts from the Swarm community. Add the Swarm community label to your posts to have them appear here.`,
-          )}
-        </Text>
-        <TouchableOpacity 
-          style={styles.debugButton}
-          onPress={() => {
-            // @ts-ignore - Navigate to SwarmFeedDebug
-            navigation.navigate('SwarmFeedDebug')
-          }}
-        >
-          <FontAwesomeIcon icon={faWrench} color={pal.colors.gray5} size={16} />
-          <Text style={styles.debugButtonText}>Debug Feed</Text>
-        </TouchableOpacity>
       </View>
     )
-  }, [_, pal, navigation])
+  }, [_])
 
-  // Render end of feed message
   const renderEndOfFeed = React.useCallback(() => {
     return (
-      <View style={styles.endOfFeedContainer}>
-        <Text style={[pal.textLight, styles.endOfFeedText]}>
-          {_(msg`You've reached the end of the Swarm feed`)}
+      <View style={styles.endOfFeed}>
+        <Text style={styles.endOfFeedText}>
+          {_(msg`You've reached the end of the Swarm Feed`)}
         </Text>
-        <TouchableOpacity 
-          style={styles.debugButton}
-          onPress={() => {
-            // @ts-ignore - Navigate to SwarmFeedDebug
-            navigation.navigate('SwarmFeedDebug')
-          }}
-        >
-          <FontAwesomeIcon icon={faWrench} color={pal.colors.gray5} size={16} />
-          <Text style={styles.debugButtonText}>Debug Feed</Text>
-        </TouchableOpacity>
       </View>
     )
-  }, [_, pal, navigation])
+  }, [_])
 
-  const handleSettingsPress = () => {
-    navigation.navigate('SwarmCommunitySettings')
-  }
+  // Show debug button for web environment
+  const renderFeedHeader = React.useCallback(() => {
+    return isWeb ? (
+      <View style={styles.debugRow}>
+        <Pressable 
+          onPress={toggleDebug} 
+          style={styles.debugButton} 
+          testID="swarmFeedDebugButton"
+        >
+          <Text style={styles.debugButtonText}>
+            {showDebug ? 'Hide Debug' : 'Debug Feed'}
+          </Text>
+        </Pressable>
+        
+        {showDebug && (
+          <View style={styles.debugControls}>
+            <Text style={styles.debugInfo}>
+              Mode: {useDirect ? 'Direct' : 'Standard'}
+            </Text>
+            <Pressable 
+              onPress={toggleDirect} 
+              style={styles.actionButton}
+            >
+              <Text style={styles.actionButtonText}>
+                Switch
+              </Text>
+            </Pressable>
+          </View>
+        )}
+      </View>
+    ) : null
+  }, [showDebug, useDirect, toggleDebug, toggleDirect])
 
   return (
-    <View style={[styles.container, pal.view]}>
-      <Header.Outer>
-        <Header.BackButton onPress={() => navigation.goBack()} />
-        <Header.Content>
-          <Header.TitleText>{_(msg`Swarm Community`)}</Header.TitleText>
-          <Button
-            type="default"
-            label="Settings"
-            onPress={handleSettingsPress}
-            style={styles.settingsButton}
-          />
-        </Header.Content>
-      </Header.Outer>
-
-      <View style={styles.toggleContainer}>
-        <Button
-          type="default"
-          label={showTest ? 'Show Regular Feed' : 'Test Feed API'}
-          onPress={() => setShowTest(!showTest)}
-        />
-        <Button
-          type="default"
-          label="Debug Feed"
-          onPress={() => {
-            // @ts-ignore: Navigation is typed for known routes
-            navigation.navigate('SwarmFeedDebug')
-          }}
-          style={{marginLeft: 8}}
-        />
-      </View>
-
+    <View style={styles.container}>
       {showTest ? (
-        <SwarmFeedTest />
+        <SwarmFeedTest onClose={() => setShowTest(false)} />
       ) : (
-        <FeedPage
-          testID="swarmFeedPage"
-          isPageFocused={true}
-          isPageAdjacent={false}
-          feed={feedDescriptor}
-          feedInfo={feedInfo}
-          renderEmptyState={renderEmptyState}
-          renderEndOfFeed={renderEndOfFeed}
-        />
+        <>
+          {renderFeedHeader()}
+          <FeedPage
+            testID="swarmFeedPage"
+            isPageFocused={true}
+            isPageAdjacent={false}
+            feed="swarm"
+            feedInfo={{
+              isDEV: true,
+              PINNED: true,
+              value: 'swarm',
+            }}
+            renderEmptyState={renderEmptyState}
+            renderEndOfFeed={renderEndOfFeed}
+          />
+        </>
       )}
     </View>
   )
@@ -181,53 +143,52 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  toggleContainer: {
-    padding: 8,
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  settingsButton: {
-    marginLeft: 8,
-  },
-  emptyContainer: {
-    padding: 20,
-    alignItems: 'center',
-    marginTop: 40,
-  },
-  emptyIcon: {
-    marginBottom: 20,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  emptyDesc: {
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  endOfFeedContainer: {
-    padding: 20,
+  endOfFeed: {
+    marginTop: 30,
+    marginBottom: 40,
     alignItems: 'center',
   },
   endOfFeedText: {
-    fontSize: 16,
-    textAlign: 'center',
+    fontWeight: 'bold',
   },
-  debugButton: {
+  toggleBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 16,
-    padding: 10,
-    borderRadius: 20,
-    backgroundColor: '#eee',
+    marginLeft: 8,
+  },
+  debugRow: {
+    flexDirection: 'row',
+    padding: 8,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    backgroundColor: '#333',
+  },
+  debugButton: {
+    backgroundColor: '#3a3a3a',
+    padding: 6,
+    borderRadius: 4,
   },
   debugButtonText: {
-    color: '#555',
-    fontSize: 14,
-    marginLeft: 8,
+    color: 'white',
+    fontSize: 12,
+  },
+  debugControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 10,
+  },
+  debugInfo: {
+    color: '#ccc',
+    fontSize: 12,
+    marginRight: 10,
+  },
+  actionButton: {
+    backgroundColor: '#444',
+    padding: 6,
+    borderRadius: 4,
+  },
+  actionButtonText: {
+    color: 'white',
+    fontSize: 12,
   },
 })
