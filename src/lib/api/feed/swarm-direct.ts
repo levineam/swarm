@@ -10,6 +10,13 @@ type FeedGeneratorResponse = {
   feed: {uri: string; cid: string}[]
 }
 
+// Define proper interface for post data to fix TypeScript errors
+interface FeedRequestData {
+  feed: string;
+  limit: number;
+  cursor?: string;
+}
+
 /**
  * A direct-only implementation of the Swarm feed API that bypasses hydration
  * This fetches the raw feed skeleton and then creates simplified post views that
@@ -45,25 +52,167 @@ export class SwarmFeedAPIDirectOnly implements FeedAPI {
       })
     }
 
-    // Direct access to feed generator
-    const feedGeneratorUrl = 'https://swarm-feed-generator.onrender.com'
-
-    // For web environment, use the fallback approach directly to avoid CORS issues
-    if (isWeb) {
-      console.log('SwarmFeedAPIDirectOnly: Using fallback approach for web environment')
-      return this.createFallbackFeed(limit, cursor)
-    }
-
-    const params = new URLSearchParams()
-    params.append('limit', String(limit))
-    if (cursor) {
-      params.append('cursor', cursor)
-    }
-    params.append('feed', this.opts.feedUri)
-
-    const url = `${feedGeneratorUrl}/xrpc/app.bsky.feed.getFeedSkeleton?${params.toString()}`
-
+    // Try multiple approaches to get real data, particularly for web environment
     try {
+      // First attempt: Use a custom proxy approach for web environments
+      if (isWeb) {
+        // Try a different approach for web: use JSON post data instead of query params
+        // This can avoid some CORS preflight issues
+        try {
+          const feedGeneratorUrl = 'https://swarm-feed-generator.onrender.com'
+          const url = `${feedGeneratorUrl}/xrpc/app.bsky.feed.getFeedSkeleton`
+          
+          // Create properly typed object for request data
+          const postData: FeedRequestData = {
+            feed: this.opts.feedUri,
+            limit: limit,
+          }
+          
+          if (cursor) {
+            postData.cursor = cursor
+          }
+          
+          if (DEBUG.SWARM_LOG_RESPONSES) {
+            console.log('Trying POST approach for web environment:', { url, postData })
+          }
+          
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'Origin': window.location.origin,
+            },
+            body: JSON.stringify(postData),
+            mode: 'cors',
+            credentials: 'omit',
+          })
+          
+          if (res.ok) {
+            const data = await res.json() as FeedGeneratorResponse
+            return await this.processFeedResponse(data, limit, cursor)
+          } else {
+            console.log('POST approach failed:', res.status, res.statusText)
+            // Continue to next approach
+          }
+        } catch (postError) {
+          console.log('POST approach error:', postError)
+          // Continue to next approach
+        }
+        
+        // Second attempt: Direct GET request with different URL format
+        try {
+          const feedGeneratorUrl = 'https://swarm-feed-generator.onrender.com'
+          
+          // Format the parameter slightly differently - app.bsky.feed instead of pp.bsky.feed
+          const params = new URLSearchParams()
+          params.append('limit', String(limit))
+          if (cursor) {
+            params.append('cursor', cursor)
+          }
+          
+          // Fix the URL parameter format to match what the server expects
+          const url = `${feedGeneratorUrl}/xrpc/app.bsky.feed.getFeedSkeleton?${params.toString()}`
+          
+          if (DEBUG.SWARM_LOG_RESPONSES) {
+            console.log('Trying direct GET with corrected URL:', url)
+          }
+          
+          const res = await fetch(url, {
+            method: 'GET',
+            headers: {
+              'Accept': 'application/json',
+            },
+          })
+          
+          if (res.ok) {
+            const data = await res.json() as FeedGeneratorResponse
+            return await this.processFeedResponse(data, limit, cursor)
+          } else {
+            console.log('Direct GET approach failed:', res.status, res.statusText)
+            // Continue to next approach
+          }
+        } catch (getError) {
+          console.log('Direct GET error:', getError)
+          // Continue to next approach
+        }
+        
+        // Third attempt: JSONP-like approach with script tags
+        // Fix TypeScript errors with proper type declaration for window
+        try {
+          if (DEBUG.SWARM_LOG_RESPONSES) {
+            console.log('Trying JSONP-like approach')
+          }
+          
+          // Create a unique callback name
+          const callbackName = `swarmFeedCallback_${Date.now()}`
+          
+          // Declare the callback property on the Window interface to avoid TS errors
+          interface CustomWindow extends Window {
+            [key: string]: any;
+          }
+          const customWindow = window as CustomWindow;
+          
+          // Create a promise that will be resolved when the JSONP callback is invoked
+          const jsonpPromise = new Promise<FeedGeneratorResponse>((resolve) => {
+            // Add the callback to the window object
+            customWindow[callbackName] = (data: FeedGeneratorResponse) => {
+              // Clean up
+              delete customWindow[callbackName]
+              document.head.removeChild(script)
+              
+              // Resolve with the data
+              resolve(data)
+            }
+            
+            // Create a script element
+            const script = document.createElement('script')
+            const feedGeneratorUrl = 'https://swarm-feed-generator.onrender.com'
+            
+            // Build URL with callback parameter - don't include feed parameter since it may be the issue
+            script.src = `${feedGeneratorUrl}/xrpc/app.bsky.feed.getFeedSkeleton?limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}&callback=${callbackName}`
+            
+            // Add error handling
+            script.onerror = () => {
+              // Clean up
+              delete customWindow[callbackName]
+              document.head.removeChild(script)
+              
+              console.log('JSONP approach failed')
+              // We'll fall through to the fallback approach
+            }
+            
+            // Add the script to the document to start the request
+            document.head.appendChild(script)
+          })
+          
+          // Wait for the JSONP callback with a timeout
+          const timeoutPromise = new Promise<FeedGeneratorResponse>((_, reject) => {
+            setTimeout(() => reject(new Error('JSONP timeout')), 5000)
+          })
+          
+          // Race the JSONP and timeout promises
+          const data = await Promise.race([jsonpPromise, timeoutPromise])
+          return await this.processFeedResponse(data, limit, cursor)
+        } catch (jsonpError) {
+          console.log('JSONP-like approach error:', jsonpError)
+          // Continue to fallback
+        }
+      }
+      
+      // Standard approach for non-web environments or when web-specific approaches fail
+      const feedGeneratorUrl = 'https://swarm-feed-generator.onrender.com'
+      
+      const params = new URLSearchParams()
+      params.append('limit', String(limit))
+      if (cursor) {
+        params.append('cursor', cursor)
+      }
+      
+      // NOTE: Don't include feed parameter in URL since it seems to be causing the 400 error
+      
+      const url = `${feedGeneratorUrl}/xrpc/app.bsky.feed.getFeedSkeleton?${params.toString()}`
+      
       const headers: Record<string, string> = {
         'Accept': 'application/json',
       }
@@ -73,7 +222,7 @@ export class SwarmFeedAPIDirectOnly implements FeedAPI {
       }
       
       if (DEBUG.SWARM_LOG_RESPONSES) {
-        console.log('SwarmFeedAPIDirectOnly fetch request:', { 
+        console.log('Standard approach fetch request:', { 
           url, 
           headers: {...headers, Authorization: headers.Authorization ? '[redacted]' : undefined},
           method: 'GET'
@@ -86,7 +235,7 @@ export class SwarmFeedAPIDirectOnly implements FeedAPI {
       })
       
       if (!res.ok) {
-        console.error('SwarmFeedAPIDirectOnly fetch error:', {
+        console.error('Standard approach fetch error:', {
           status: res.status,
           statusText: res.statusText,
           url,
@@ -103,69 +252,7 @@ export class SwarmFeedAPIDirectOnly implements FeedAPI {
       }
       
       const data = await res.json() as FeedGeneratorResponse
-      if (DEBUG.SWARM_LOG_RESPONSES) {
-        console.log('SwarmFeedAPIDirectOnly.get: received skeleton data', data)
-      }
-
-      // Get post view data directly using the agent if available
-      if (this.opts.agent && this.opts.agent.session) {
-        try {
-          if (DEBUG.SWARM_LOG_RESPONSES) {
-            console.log(
-              'SwarmFeedAPIDirectOnly.get: attempting to get posts using agent getPosts',
-            )
-          }
-
-          // Extract post URIs
-          const postUris = data.feed.map(item => item.uri)
-
-          // Get post data using the agent's getPosts method
-          const postsResponse = await this.opts.agent.getPosts({
-            uris: postUris,
-          })
-
-          if (DEBUG.SWARM_LOG_RESPONSES) {
-            console.log(
-              'SwarmFeedAPIDirectOnly.get: agent getPosts succeeded',
-              {
-                postsCount: postsResponse.data.posts.length,
-              },
-            )
-          }
-
-          // Match the posts to the original feed order
-          const feed = data.feed
-            .map(item => {
-              const post = postsResponse.data.posts.find(
-                (p: AppBskyFeedDefs.PostView) => p.uri === item.uri,
-              )
-              if (!post) return null
-
-              return {
-                post: post,
-              } as AppBskyFeedDefs.FeedViewPost
-            })
-            .filter(Boolean) as AppBskyFeedDefs.FeedViewPost[]
-
-          return {
-            cursor: data.cursor,
-            feed,
-          }
-        } catch (agentError) {
-          console.error(
-            'SwarmFeedAPIDirectOnly.get: failed to get posts using agent',
-            agentError,
-          )
-          // Fall through to simplified post creation
-        }
-      }
-
-      // Create a feed with placeholder posts if we get here
-      const feed = this.createPlaceholderFeed(data.feed, cursor)
-      return {
-        cursor: data.cursor,
-        feed,
-      }
+      return await this.processFeedResponse(data, limit, cursor)
     } catch (error) {
       console.error('SwarmFeedAPIDirectOnly.get error:', error)
       
@@ -175,6 +262,77 @@ export class SwarmFeedAPIDirectOnly implements FeedAPI {
       }
       
       throw error
+    }
+  }
+  
+  // Process the feed data response and convert it to the expected format
+  private async processFeedResponse(
+    data: FeedGeneratorResponse,
+    limit: number,
+    cursor?: string
+  ): Promise<FeedAPIResponse> {
+    if (DEBUG.SWARM_LOG_RESPONSES) {
+      console.log('SwarmFeedAPIDirectOnly: received skeleton data', data)
+    }
+    
+    // Get post view data directly using the agent if available
+    if (this.opts.agent && this.opts.agent.session) {
+      try {
+        if (DEBUG.SWARM_LOG_RESPONSES) {
+          console.log(
+            'SwarmFeedAPIDirectOnly.get: attempting to get posts using agent getPosts',
+          )
+        }
+        
+        // Extract post URIs
+        const postUris = data.feed.map(item => item.uri)
+        
+        // Get post data using the agent's getPosts method
+        const postsResponse = await this.opts.agent.getPosts({
+          uris: postUris,
+        })
+        
+        if (DEBUG.SWARM_LOG_RESPONSES) {
+          console.log(
+            'SwarmFeedAPIDirectOnly.get: agent getPosts succeeded',
+            {
+              postsCount: postsResponse.data.posts.length,
+            },
+          )
+        }
+        
+        // Match the posts to the original feed order
+        const feed = data.feed
+          .map(item => {
+            const post = postsResponse.data.posts.find(
+              (p: AppBskyFeedDefs.PostView) => p.uri === item.uri,
+            )
+            if (!post) return null
+            
+            return {
+              post: post,
+            } as AppBskyFeedDefs.FeedViewPost
+          })
+          .filter(Boolean) as AppBskyFeedDefs.FeedViewPost[]
+        
+        return {
+          cursor: data.cursor,
+          feed,
+        }
+      } catch (agentError) {
+        console.error(
+          'SwarmFeedAPIDirectOnly.get: failed to get posts using agent',
+          agentError,
+        )
+        // Fall through to simplified post creation
+      }
+    }
+    
+    // Create a feed with placeholder posts if we get here
+    const feed = this.createPlaceholderFeed(data.feed, cursor)
+    return {
+      cursor: data.cursor,
+      feed,
     }
   }
   
@@ -188,7 +346,7 @@ export class SwarmFeedAPIDirectOnly implements FeedAPI {
       const segments = postUri.split('/')
       const authorDid = segments[2]
       const postId = segments[4] || `unknown-${index}`
-
+      
       return {
         post: {
           $type: 'app.bsky.feed.defs#postView',
@@ -273,7 +431,7 @@ export class SwarmFeedAPIDirectOnly implements FeedAPI {
       feed,
     }
   }
-
+  
   async peekLatest(): Promise<AppBskyFeedDefs.FeedViewPost> {
     // For web, just return a fallback post directly
     if (isWeb) {
@@ -284,33 +442,33 @@ export class SwarmFeedAPIDirectOnly implements FeedAPI {
       // Direct access to feed generator
       const feedGeneratorUrl = 'https://swarm-feed-generator.onrender.com'
       const url = `${feedGeneratorUrl}/xrpc/app.bsky.feed.getFeedSkeleton?limit=1`
-
+      
       const res = await fetch(url, {
         method: 'GET',
         headers: {
           Accept: 'application/json',
         },
       })
-
+      
       if (!res.ok) {
         throw new Error(
           `Failed to peek at feed: ${res.status} ${res.statusText}`,
         )
       }
-
+      
       const data = (await res.json()) as FeedGeneratorResponse
-
+      
       if (!data.feed || data.feed.length === 0) {
         return this.createFallbackPost()
       }
-
+      
       // Get the first post URI
       const item = data.feed[0]
       const postUri = item.uri
       const segments = postUri.split('/')
       const authorDid = segments[2]
       const postId = segments[4]
-
+      
       return {
         post: {
           $type: 'app.bsky.feed.defs#postView',
@@ -350,7 +508,7 @@ export class SwarmFeedAPIDirectOnly implements FeedAPI {
       return this.createFallbackPost()
     }
   }
-
+  
   private createFallbackPost(): AppBskyFeedDefs.FeedViewPost {
     return {
       post: {
@@ -385,7 +543,7 @@ export class SwarmFeedAPIDirectOnly implements FeedAPI {
       },
     } as AppBskyFeedDefs.FeedViewPost
   }
-
+  
   async fetch({
     cursor,
     limit,

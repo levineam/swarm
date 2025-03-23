@@ -53,6 +53,7 @@ export function SwarmFeedScreen({
   const queryClient = useQueryClient()
   const [showDebug, setShowDebug] = useState(false)
   const [useDirect, setUseDirect] = useState(true)
+  const [apiError, setApiError] = useState<string | null>(null)
 
   // Reset minimal shell mode when screen is focused
   React.useEffect(() => {
@@ -157,6 +158,75 @@ export function SwarmFeedScreen({
             renderEmptyState={renderEmptyState}
             renderEndOfFeed={renderEndOfFeed}
           />
+          <Pressable
+            onPress={async () => {
+              // Reset the error state first
+              setApiError(null);
+              
+              try {
+                console.log('Testing direct feed API call...');
+                
+                // Try multiple approaches to find one that works
+                const feedGeneratorUrl = 'https://swarm-feed-generator.onrender.com';
+                
+                // Approach 1: Basic GET without feed parameter
+                try {
+                  const res = await fetch(`${feedGeneratorUrl}/xrpc/app.bsky.feed.getFeedSkeleton?limit=5`, {
+                    method: 'GET',
+                    headers: {
+                      'Accept': 'application/json'
+                    }
+                  });
+                  
+                  if (res.ok) {
+                    const data = await res.json();
+                    console.log('Direct API call successful!', data);
+                    alert('API call successful! Check console for details.');
+                    return;
+                  } else {
+                    console.log('Approach 1 failed:', res.status, res.statusText);
+                  }
+                } catch (err) {
+                  console.error('Approach 1 error:', err);
+                }
+                
+                // Approach 2: POST with JSON body
+                try {
+                  const res = await fetch(`${feedGeneratorUrl}/xrpc/app.bsky.feed.getFeedSkeleton`, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                      limit: 5
+                    })
+                  });
+                  
+                  if (res.ok) {
+                    const data = await res.json();
+                    console.log('POST approach successful!', data);
+                    alert('POST API call successful! Check console for details.');
+                    return;
+                  } else {
+                    console.log('Approach 2 failed:', res.status, res.statusText);
+                  }
+                } catch (err) {
+                  console.error('Approach 2 error:', err);
+                }
+                
+                // If we got here, all approaches failed
+                throw new Error('All API call approaches failed');
+              } catch (error) {
+                console.error('Error testing feed API:', error);
+                setApiError(error.message || 'Unknown error');
+              }
+            }}
+            style={styles.testButton}
+            testID="testDirectApiButton"
+          >
+            <Text style={styles.testButtonText}>Test Direct API</Text>
+          </Pressable>
         </>
       )}
     </View>
@@ -212,6 +282,17 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   actionButtonText: {
+    color: 'white',
+    fontSize: 12,
+  },
+  testButton: {
+    backgroundColor: '#444',
+    padding: 6,
+    borderRadius: 4,
+    marginTop: 10,
+    alignItems: 'center',
+  },
+  testButtonText: {
     color: 'white',
     fontSize: 12,
   },
