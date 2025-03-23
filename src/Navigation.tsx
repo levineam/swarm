@@ -109,6 +109,7 @@ import {ThreadPreferencesScreen} from './screens/Settings/ThreadPreferences'
 import TopicScreen from './screens/Topic'
 import {WalletScreen} from './screens/Wallet'
 import {SwarmCommunitySettingsScreen} from './view/screens/SwarmCommunitySettings'
+import {SwarmFeedDebug} from '#/view/debug/SwarmFeedDebug'
 
 const navigationRef = createNavigationContainerRef<AllNavigatorParams>()
 
@@ -464,6 +465,14 @@ function commonScreens(Stack: typeof HomeTab, unreadCountLabel?: string) {
         options={{
           title: title(msg`Swarm Community`),
           headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="SwarmFeedDebug"
+        getComponent={() => SwarmFeedDebug}
+        options={{
+          title: title(msg`Swarm Feed Debug`),
+          headerShown: true,
         }}
       />
       <Stack.Screen

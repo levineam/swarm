@@ -1,9 +1,12 @@
 import React from 'react'
-import {StyleSheet, View} from 'react-native'
+import {StyleSheet, View, Text, TouchableOpacity} from 'react-native'
 import {AppBskyActorDefs, RichText} from '@atproto/api'
 import {msg} from '@lingui/macro'
 import {useLingui} from '@lingui/react'
-import {useFocusEffect} from '@react-navigation/native'
+import {useFocusEffect, useNavigation} from '@react-navigation/native'
+import {useQuery, useQueryClient} from '@tanstack/react-query'
+import {FontAwesomeIcon} from '@fortawesome/react-native-fontawesome'
+import {faWrench} from '@fortawesome/free-solid-svg-icons'
 
 import {usePalette} from '#/lib/hooks/usePalette'
 import {CommonNavigatorParams, NativeStackScreenProps} from '#/lib/routes/types'
@@ -12,7 +15,6 @@ import {FeedDescriptor} from '#/state/queries/post-feed'
 import {useSetMinimalShellMode} from '#/state/shell'
 import {FeedPage} from '#/view/com/feeds/FeedPage'
 import {Button} from '#/view/com/util/forms/Button'
-import {Text} from '#/view/com/util/text/Text'
 import {SwarmFeedTest} from '#/view/debug/SwarmFeedTest'
 import {Swarm_Stroke2_Corner0_Rounded} from '#/components/icons/Swarm'
 import {Header} from '#/components/Layout'
@@ -26,6 +28,7 @@ export function SwarmFeedScreen({navigation}: Props) {
   const {_} = useLingui()
   const setMinimalShellMode = useSetMinimalShellMode()
   const [showTest, setShowTest] = React.useState(false)
+  const queryClient = useQueryClient()
 
   // Reset minimal shell mode when screen is focused
   useFocusEffect(
@@ -86,9 +89,19 @@ export function SwarmFeedScreen({navigation}: Props) {
             msg`This is where you'll see posts from the Swarm community. Add the Swarm community label to your posts to have them appear here.`,
           )}
         </Text>
+        <TouchableOpacity 
+          style={styles.debugButton}
+          onPress={() => {
+            // @ts-ignore - Navigate to SwarmFeedDebug
+            navigation.navigate('SwarmFeedDebug')
+          }}
+        >
+          <FontAwesomeIcon icon={faWrench} color={pal.colors.gray5} size={16} />
+          <Text style={styles.debugButtonText}>Debug Feed</Text>
+        </TouchableOpacity>
       </View>
     )
-  }, [_, pal])
+  }, [_, pal, navigation])
 
   // Render end of feed message
   const renderEndOfFeed = React.useCallback(() => {
@@ -97,9 +110,19 @@ export function SwarmFeedScreen({navigation}: Props) {
         <Text style={[pal.textLight, styles.endOfFeedText]}>
           {_(msg`You've reached the end of the Swarm feed`)}
         </Text>
+        <TouchableOpacity 
+          style={styles.debugButton}
+          onPress={() => {
+            // @ts-ignore - Navigate to SwarmFeedDebug
+            navigation.navigate('SwarmFeedDebug')
+          }}
+        >
+          <FontAwesomeIcon icon={faWrench} color={pal.colors.gray5} size={16} />
+          <Text style={styles.debugButtonText}>Debug Feed</Text>
+        </TouchableOpacity>
       </View>
     )
-  }, [_, pal])
+  }, [_, pal, navigation])
 
   const handleSettingsPress = () => {
     navigation.navigate('SwarmCommunitySettings')
@@ -184,5 +207,18 @@ const styles = StyleSheet.create({
   endOfFeedText: {
     fontSize: 16,
     textAlign: 'center',
+  },
+  debugButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 16,
+    padding: 10,
+    borderRadius: 20,
+    backgroundColor: '#eee',
+  },
+  debugButtonText: {
+    color: '#555',
+    fontSize: 14,
+    marginLeft: 8,
   },
 })
