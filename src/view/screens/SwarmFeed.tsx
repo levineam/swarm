@@ -149,6 +149,15 @@ export function SwarmFeedScreen({navigation}: Props) {
           label={showTest ? 'Show Regular Feed' : 'Test Feed API'}
           onPress={() => setShowTest(!showTest)}
         />
+        <Button
+          type="default"
+          label="Debug Feed"
+          onPress={() => {
+            // @ts-ignore: Navigation is typed for known routes
+            navigation.navigate('SwarmFeedDebug')
+          }}
+          style={{marginLeft: 8}}
+        />
       </View>
 
       {showTest ? (
