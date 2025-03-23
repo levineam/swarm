@@ -478,7 +478,7 @@ function createApi({
     // Debug log when creating SwarmFeedAPI
     console.log('createApi: Creating API for Swarm feed')
 
-    // Use the DEBUG constant to control bypass behavior
+    // Check DEBUG settings for bypass mode
     if (DEBUG.SWARM_BYPASS_HYDRATION) {
       console.log(
         'createApi: Using SwarmFeedAPIDirectOnly (bypassing hydration) for testing',
