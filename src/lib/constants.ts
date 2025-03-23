@@ -195,7 +195,7 @@ export const SWARM_API_PROXY = 'https://swarm-cors-proxy.onrender.com'
 // Debug toggles for Swarm feed
 export const DEBUG = {
   // Set to true to enable direct API calls with no hydration for testing
-  SWARM_BYPASS_HYDRATION: false,
+  SWARM_BYPASS_HYDRATION: true,
 
   // Set to true to log feed responses
   SWARM_LOG_RESPONSES: true,

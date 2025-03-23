@@ -167,10 +167,12 @@ export class SwarmFeedAPI implements FeedAPI {
     limit: number
   }): Promise<FeedAPIResponse> {
     try {
-      console.log('SwarmFeedAPI: Fetching feed', {
+      // Log the request
+      console.log('SwarmFeedAPI: fetch request', {
         feedUri: this.feedUri,
         limit,
         cursor,
+        timestamp: new Date().toISOString(),
       })
 
       // Log authentication state at the start of the request
@@ -179,6 +181,7 @@ export class SwarmFeedAPI implements FeedAPI {
         sessionDid: this.agent.session?.did ?? 'none',
         accessJwtLength: this.agent.session?.accessJwt?.length ?? 0,
         refreshJwtLength: this.agent.session?.refreshJwt?.length ?? 0,
+        timestamp: new Date().toISOString(),
       })
 
       // Try direct request to feed generator first (bypassing the proxy)
@@ -195,21 +198,31 @@ export class SwarmFeedAPI implements FeedAPI {
       const response = await fetch(url)
 
       // Log response status
-      console.log('SwarmFeedAPI: Skeleton response status', response.status)
+      console.log('SwarmFeedAPI: Skeleton response status', {
+        status: response.status,
+        statusText: response.statusText,
+        timestamp: new Date().toISOString(),
+      })
 
       if (!response.ok) {
         console.error('SwarmFeedAPI: Failed to fetch feed skeleton', {
           status: response.status,
           statusText: response.statusText,
+          timestamp: new Date().toISOString(),
         })
         return {feed: []}
       }
 
       const skeletonData = await response.json()
-      console.log('SwarmFeedAPI: Got feed skeleton', {
+
+      // Log detailed feed data for debugging
+      console.log('SwarmFeedAPI: Pre-processing feed data', {
         feedLength: skeletonData.feed?.length || 0,
         cursor: skeletonData.cursor,
-        skeleton: JSON.stringify(skeletonData).substring(0, 200), // Show start of the data
+        firstPost: skeletonData.feed?.[0]
+          ? JSON.stringify(skeletonData.feed[0])
+          : 'none',
+        timestamp: new Date().toISOString(),
       })
 
       // If there are no posts, return an empty feed
@@ -220,8 +233,116 @@ export class SwarmFeedAPI implements FeedAPI {
         return {feed: []}
       }
 
+      // Try a hybrid approach - first attempt hydration, if it fails use the simplified approach
+      try {
+        // Attempt to use the agent's hydration if available
+        if (this.agent && typeof this.agent.getTimeline === 'function') {
+          console.log('SwarmFeedAPI: Attempting to use agent hydration')
+
+          try {
+            // First log the current agent session state
+            console.log(
+              'SwarmFeedAPI: Agent session state before getTimeline',
+              {
+                hasSession: !!this.agent.session,
+                sessionDid: this.agent.session?.did ?? 'none',
+                accessJwtLength: this.agent.session?.accessJwt?.length ?? 0,
+                refreshJwtLength: this.agent.session?.refreshJwt?.length ?? 0,
+              },
+            )
+
+            const timelineResponse = await this.agent.getTimeline({
+              cursor,
+              limit,
+              algorithm: this.feedUri,
+            })
+
+            console.log('SwarmFeedAPI: Agent hydration succeeded', {
+              feedLength: timelineResponse.data.feed.length,
+              timestamp: new Date().toISOString(),
+            })
+
+            return {
+              cursor: timelineResponse.data.cursor,
+              feed: timelineResponse.data.feed,
+            }
+          } catch (hydrationError: any) {
+            console.error('SwarmFeedAPI: Agent hydration failed', {
+              error: hydrationError.message || String(hydrationError),
+              stack: hydrationError.stack || 'No stack available',
+              timestamp: new Date().toISOString(),
+            })
+
+            // Before falling through to the simplified approach, try to get posts directly
+            try {
+              console.log(
+                'SwarmFeedAPI: Trying direct getPosts approach as fallback',
+              )
+
+              // Extract post URIs
+              const postUris = skeletonData.feed.map((item: any) => item.post)
+
+              // Get post data using the agent's getPosts method
+              const postsResponse = await this.agent.getPosts({
+                uris: postUris,
+              })
+
+              console.log('SwarmFeedAPI: Direct getPosts succeeded', {
+                postsCount: postsResponse.data.posts.length,
+                timestamp: new Date().toISOString(),
+              })
+
+              // Match the posts to the original feed order
+              const feed = skeletonData.feed
+                .map((item: any) => {
+                  const post = postsResponse.data.posts.find(
+                    (p: any) => p.uri === item.post,
+                  )
+                  if (!post) return null
+
+                  return {
+                    post: post,
+                  }
+                })
+                .filter(Boolean)
+
+              if (feed.length > 0) {
+                console.log(
+                  'SwarmFeedAPI: Returning feed from direct getPosts',
+                  {
+                    feedLength: feed.length,
+                    timestamp: new Date().toISOString(),
+                  },
+                )
+
+                return {
+                  cursor: skeletonData.cursor,
+                  feed,
+                }
+              }
+            } catch (getPostsError: any) {
+              console.error('SwarmFeedAPI: Direct getPosts fallback failed', {
+                error: getPostsError.message || String(getPostsError),
+                stack: getPostsError.stack || 'No stack available',
+                timestamp: new Date().toISOString(),
+              })
+            }
+
+            // Fall through to the simplified approach
+          }
+        }
+      } catch (agentError: any) {
+        console.error('SwarmFeedAPI: Agent approach error', {
+          error: agentError.message || String(agentError),
+          timestamp: new Date().toISOString(),
+        })
+        // Continue with simplified approach
+      }
+
       // NEW APPROACH: Create simpler feed items with basic information
       // This avoids the problematic hydration step that might be failing
+      console.log('SwarmFeedAPI: Using simplified post creation approach')
+
       const feed = skeletonData.feed.map((item: any) => {
         // Extract the DID and post ID from the AT URI
         const postUri = item.post
@@ -252,11 +373,10 @@ export class SwarmFeedAPI implements FeedAPI {
             },
             record: {
               $type: 'app.bsky.feed.post',
-              text: `Post from the Swarm community feed. Open in the app to see full content. #swarm #community`,
+              text: `Post from Swarm community (ID: ${postId})`,
               createdAt: new Date().toISOString(),
               langs: ['en'],
             },
-            embed: undefined,
             replyCount: 0,
             repostCount: 0,
             likeCount: 0,
@@ -267,25 +387,24 @@ export class SwarmFeedAPI implements FeedAPI {
               like: undefined,
             },
           },
-          $type: 'app.bsky.feed.defs#feedViewPost',
-          reply: undefined,
-          reason: undefined,
         }
       })
 
-      console.log(
-        'SwarmFeedAPI: Created feed with',
-        feed.length,
-        'simplified posts',
-      )
+      console.log('SwarmFeedAPI: Created simplified feed', {
+        generatedFeedLength: feed.length,
+        timestamp: new Date().toISOString(),
+      })
 
-      // Return the simplified feed
       return {
         cursor: skeletonData.cursor,
         feed,
       }
-    } catch (error) {
-      console.error('SwarmFeedAPI: Error fetching feed', error)
+    } catch (error: any) {
+      console.error('SwarmFeedAPI: Fetch failed', {
+        error: error.message || String(error),
+        stack: error.stack || 'No stack available',
+        timestamp: new Date().toISOString(),
+      })
       return {feed: []}
     }
   }
