@@ -1,12 +1,22 @@
-# Feed Generator Debugging (v6): Critical Display Issue Resolution
+# Feed Generator Debugging (v7): Critical Display Issue Resolution
 
 ## Latest Status Update
-**PROGRESS MADE**: We've implemented a comprehensive debugging approach and can now confirm the following:
+**HIGH VISIBILITY ISSUE**: The main Swarm feed tab, which is pinned by default and visible to all users on the home screen, is failing to display posts. When users open the app, they see "Error: Failed to fetch" instead of community content. This is a high-priority issue as it affects the core user experience.
 
-1. The error "Failed to fetch" is occurring when accessing the Swarm feed in the web UI. Network connectivity is not the actual issue - this appears to be related to CORS or authentication problems.
-2. The `SWARM_FEED_URI` has been updated to point to the correct feed generator: `at://did:plc:y5tuxxovcztmqg3dkcpnms5d/app.bsky.feed.generator/swarm-feed`.
-3. We've implemented both a standard API approach (with hydration) and a direct approach (bypassing hydration) to help diagnose the issue.
-4. A new SwarmFeedDebug screen has been added that allows testing different API approaches side-by-side.
+We've implemented a comprehensive debugging approach and can now confirm the following:
+
+1. The error "Failed to fetch" is occurring when accessing the pinned Swarm feed tab in the main navigation.
+2. Network connectivity is not the actual issue - this appears to be related to CORS or authentication problems.
+3. The `SWARM_FEED_URI` has been updated to point to the correct feed generator: `at://did:plc:y5tuxxovcztmqg3dkcpnms5d/app.bsky.feed.generator/swarm-feed`.
+4. We've implemented both a standard API approach (with hydration) and a direct approach (bypassing hydration) to help diagnose the issue.
+5. A new SwarmFeedDebug screen has been added that allows testing different API approaches side-by-side.
+
+## Critical User Impact
+This issue has high visibility because:
+1. The Swarm feed tab is pinned by default alongside primary feeds like "Following"
+2. It appears on the main home interface that all users see immediately
+3. The error message is prominently displayed, creating a poor first impression
+4. It prevents users from seeing any Swarm community content in their normal browsing flow
 
 ## Next Diagnostic Steps
 Based on the "Failed to fetch" error and our findings so far, we need to focus on:
@@ -24,7 +34,7 @@ Based on the "Failed to fetch" error and our findings so far, we need to focus o
 | Database Storage | ✅ WORKING | Posts are being stored in the database |
 | Bluesky Preferences | ✅ CONFIRMED | Swarm feed is saved in user preferences |
 | CORS Proxy | 🔄 TESTING | Uncertain if the proxy is correctly passing auth tokens |
-| Client Display | ❌ CRITICAL | "Failed to fetch" error when accessing the feed |
+| **Main Pinned Feed Tab** | ❌ CRITICAL | "Failed to fetch" error in the primary UI location |
 | API Requests | 🔄 INVESTIGATING | Debugging screen implemented to test multiple request methods |
 | Auth Tokens | ❓ SUSPECT | Authentication may not be properly passing through |
 
@@ -95,6 +105,6 @@ The most likely path to resolution will be:
 
 ---
 
-**Document Version**: 6.0  
+**Document Version**: 7.0  
 **Last Updated**: March 2024  
 **Contributors**: Andrew Levine, Claude 

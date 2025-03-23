@@ -1,8 +1,9 @@
 import {AppBskyFeedDefs} from '@atproto/api'
 import {QueryClient} from '@tanstack/react-query'
 
-import {DEBUG} from '#/lib/constants'
+import {DEBUG, SWARM_FEED_URI} from '#/lib/constants'
 import {FeedAPI, FeedAPIResponse} from './types'
+import {isWeb} from '#/platform/detection'
 
 type FeedGeneratorResponse = {
   cursor?: string
@@ -38,7 +39,10 @@ export class SwarmFeedAPIDirectOnly implements FeedAPI {
     qc?: QueryClient
   }): Promise<FeedAPIResponse> {
     if (DEBUG.SWARM_LOG_RESPONSES) {
-      console.log('SwarmFeedAPIDirectOnly.get: fetching feed directly')
+      console.log('SwarmFeedAPIDirectOnly.get: fetching feed directly', {
+        isWeb: isWeb,
+        feedUri: this.opts.feedUri,
+      })
     }
 
     // Direct access to feed generator
@@ -50,21 +54,37 @@ export class SwarmFeedAPIDirectOnly implements FeedAPI {
       params.append('cursor', cursor)
     }
 
+    // For web, add feed parameter directly
+    if (isWeb) {
+      params.append('feed', SWARM_FEED_URI)
+    }
+
     const url = `${feedGeneratorUrl}/xrpc/app.bsky.feed.getFeedSkeleton?${params.toString()}`
 
     try {
+      // Use different headers based on platform to avoid CORS issues
+      const headers: Record<string, string> = {
+        'Accept': 'application/json',
+      }
+      
+      // Don't include auth header on web to avoid preflight CORS issues
+      if (!isWeb && this.opts.agent && this.opts.agent.session) {
+        headers['Authorization'] = `Bearer ${this.opts.agent.session.accessJwt}`
+      }
+      
       const res = await fetch(url, {
         method: 'GET',
-        headers: {
-          Accept: 'application/json',
-        },
+        headers,
+        // For web, add these options to help with CORS
+        mode: isWeb ? 'cors' : undefined,
+        credentials: isWeb ? 'omit' : undefined,
       })
-
+      
       if (!res.ok) {
         throw new Error(`Failed to fetch feed: ${res.status} ${res.statusText}`)
       }
-
-      const data = (await res.json()) as FeedGeneratorResponse
+      
+      const data = await res.json() as FeedGeneratorResponse
       if (DEBUG.SWARM_LOG_RESPONSES) {
         console.log('SwarmFeedAPIDirectOnly.get: received skeleton data', data)
       }

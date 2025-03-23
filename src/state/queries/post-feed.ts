@@ -48,6 +48,7 @@ import {
   embedViewRecordToPostView,
   getEmbeddedPost,
 } from './util'
+import {isWeb} from '#/platform/detection'
 
 type ActorDid = string
 export type AuthorFilter =
@@ -475,13 +476,15 @@ function createApi({
       }
     }
   } else if (feedDesc === 'swarm') {
-    // Debug log when creating SwarmFeedAPI
-    console.log('createApi: Creating API for Swarm feed')
+    console.log('createApi: Creating API for Swarm feed', {
+      isWeb: isWeb,
+      bypassHydration: DEBUG.SWARM_BYPASS_HYDRATION,
+      hasFeedUri: !!SWARM_FEED_URI,
+    })
 
-    // Check DEBUG settings for bypass mode
-    if (DEBUG.SWARM_BYPASS_HYDRATION) {
+    if (isWeb || DEBUG.SWARM_BYPASS_HYDRATION) {
       console.log(
-        'createApi: Using SwarmFeedAPIDirectOnly (bypassing hydration) for testing',
+        'createApi: Using SwarmFeedAPIDirectOnly (bypassing hydration) for web or testing',
       )
       return new SwarmFeedAPIDirectOnly({
         agent,
