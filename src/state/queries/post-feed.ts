@@ -24,11 +24,13 @@ import {LikesFeedAPI} from '#/lib/api/feed/likes'
 import {ListFeedAPI} from '#/lib/api/feed/list'
 import {MergeFeedAPI} from '#/lib/api/feed/merge'
 import {SwarmFeedAPI} from '#/lib/api/feed/swarm'
+import {SwarmFeedAPIDirectOnly} from '#/lib/api/feed/swarm-direct'
 import {FeedAPI, ReasonFeedSource} from '#/lib/api/feed/types'
 import {aggregateUserInterests} from '#/lib/api/feed/utils'
 import {FeedTuner, FeedTunerFn} from '#/lib/api/feed-manip'
 import {
   BSKY_FEED_OWNER_DIDS,
+  DEBUG,
   DISCOVER_FEED_URI,
   SWARM_FEED_URI,
 } from '#/lib/constants'
@@ -474,13 +476,24 @@ function createApi({
     }
   } else if (feedDesc === 'swarm') {
     // Debug log when creating SwarmFeedAPI
-    console.log('createApi: Creating SwarmFeedAPI for Swarm feed')
+    console.log('createApi: Creating API for Swarm feed')
 
-    // Use our special SwarmFeedAPI that uses the proxy
-    return new SwarmFeedAPI({
-      agent,
-      feedUri: SWARM_FEED_URI,
-    })
+    // Use the DEBUG constant to control bypass behavior
+    if (DEBUG.SWARM_BYPASS_HYDRATION) {
+      console.log(
+        'createApi: Using SwarmFeedAPIDirectOnly (bypassing hydration) for testing',
+      )
+      return new SwarmFeedAPIDirectOnly({
+        agent,
+        feedUri: SWARM_FEED_URI,
+      })
+    } else {
+      console.log('createApi: Using standard SwarmFeedAPI with hydration')
+      return new SwarmFeedAPI({
+        agent,
+        feedUri: SWARM_FEED_URI,
+      })
+    }
   } else if (feedDesc.startsWith('author')) {
     const [_, actor, filter] = feedDesc.split('|')
     return new AuthorFeedAPI({agent, feedParams: {actor, filter}})

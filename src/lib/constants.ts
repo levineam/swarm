@@ -131,7 +131,7 @@ export const VIDEO_FEED_URI =
 export const STAGING_VIDEO_FEED_URI =
   'at://did:plc:q6gjnaw2blty4crticxkmujt/app.bsky.feed.generator/bsky-video-staging'
 export const SWARM_FEED_URI =
-  'at://did:plc:ouadmsyvsfcpkxg3yyz4trqi/app.bsky.feed.generator/swarm-community'
+  'at://did:plc:mqxsuw5b5rhpwo4lw6iwlid5/app.bsky.feed.generator/swarm-community'
 export const VIDEO_FEED_URIS = [VIDEO_FEED_URI, STAGING_VIDEO_FEED_URI]
 export const DISCOVER_SAVED_FEED = {
   type: 'feed',
@@ -191,3 +191,12 @@ export type SupportedMimeTypes = (typeof SUPPORTED_MIME_TYPES)[number]
 
 // Swarm CORS Proxy URL
 export const SWARM_API_PROXY = 'https://swarm-cors-proxy.onrender.com'
+
+// Debug toggles for Swarm feed
+export const DEBUG = {
+  // Set to true to enable direct API calls with no hydration for testing
+  SWARM_BYPASS_HYDRATION: false,
+
+  // Set to true to log feed responses
+  SWARM_LOG_RESPONSES: true,
+}
