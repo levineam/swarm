@@ -46,14 +46,13 @@ type Props = NativeStackScreenProps<CommonNavigatorParams, 'SwarmFeed'>
 
 export function SwarmFeedScreen({
   navigation,
-  route,
 }: Props) {
   const {_} = useLingui()
-  const [showTest, setShowTest] = React.useState(false)
-  const queryClient = useQueryClient()
+  const [showTest, _setShowTest] = React.useState(false)
+  const _queryClient = useQueryClient()
   const [showDebug, setShowDebug] = useState(false)
   const [useDirect, setUseDirect] = useState(true)
-  const [apiError, setApiError] = useState<string | null>(null)
+  const [_apiError, setApiError] = useState<string | null>(null)
 
   // Reset minimal shell mode when screen is focused
   React.useEffect(() => {
@@ -72,16 +71,17 @@ export function SwarmFeedScreen({
     }
   }, [useDirect])
 
-  const toggleDebug = () => {
-    setShowDebug(!showDebug)
-  }
+  // Use useCallback to avoid creating new function instances on each render
+  const toggleDebug = React.useCallback(() => {
+    setShowDebug(prev => !prev)
+  }, [])
 
-  const toggleDirect = () => {
-    setUseDirect(!useDirect)
-  }
+  const toggleDirect = React.useCallback(() => {
+    setUseDirect(prev => !prev)
+  }, [])
 
   // Rendering utilities for feed states
-  const feedMessages = React.useMemo(
+  const _feedMessages = React.useMemo(
     () => ({
       isEmptyList: msg`No posts found. Check back soon!`,
       endOfList: msg`You've reached the end of the Swarm Feed`,
@@ -142,6 +142,55 @@ export function SwarmFeedScreen({
     ) : null
   }, [showDebug, useDirect, toggleDebug, toggleDirect])
 
+  // Update the Test Direct API button handler function
+  const testDirectAPI = async () => {
+    try {
+      // Reset any error state
+      setApiError(null);
+      
+      // Show clear console messages
+      console.log('Testing direct API call to feed generator');
+      
+      // Use a more reliable way to fetch the skeleton
+      const feedGeneratorUrl = 'https://swarm-feed-generator.onrender.com';
+      const encodedFeedUri = encodeURIComponent(FEED_URI);
+      const url = `${feedGeneratorUrl}/xrpc/app.bsky.feed.getFeedSkeleton?feed=${encodedFeedUri}&limit=3`;
+      
+      console.log('Fetching from URL:', url);
+      
+      // Create custom headers to avoid CORS issues
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Origin': window.location.origin
+        },
+        mode: 'cors',
+        cache: 'no-cache',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log('Feed generator response:', data);
+      
+      // Display success or error in the UI
+      if (data && data.feed && data.feed.length > 0) {
+        alert(`Success! Received ${data.feed.length} posts from feed generator.`);
+      } else {
+        alert('API call succeeded but returned no posts.');
+      }
+      
+    } catch (err) {
+      console.error('Direct API test failed:', err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setApiError(errorMessage);
+      alert(`API test failed: ${errorMessage}`);
+    }
+  };
+
   return (
     <View style={styles.container}>
       {showTest ? (
@@ -159,69 +208,7 @@ export function SwarmFeedScreen({
             renderEndOfFeed={renderEndOfFeed}
           />
           <Pressable
-            onPress={async () => {
-              // Reset the error state first
-              setApiError(null);
-              
-              try {
-                console.log('Testing direct feed API call...');
-                
-                // Try multiple approaches to find one that works
-                const feedGeneratorUrl = 'https://swarm-feed-generator.onrender.com';
-                
-                // Approach 1: Basic GET without feed parameter
-                try {
-                  const res = await fetch(`${feedGeneratorUrl}/xrpc/app.bsky.feed.getFeedSkeleton?limit=5`, {
-                    method: 'GET',
-                    headers: {
-                      'Accept': 'application/json'
-                    }
-                  });
-                  
-                  if (res.ok) {
-                    const data = await res.json();
-                    console.log('Direct API call successful!', data);
-                    alert('API call successful! Check console for details.');
-                    return;
-                  } else {
-                    console.log('Approach 1 failed:', res.status, res.statusText);
-                  }
-                } catch (err) {
-                  console.error('Approach 1 error:', err);
-                }
-                
-                // Approach 2: POST with JSON body
-                try {
-                  const res = await fetch(`${feedGeneratorUrl}/xrpc/app.bsky.feed.getFeedSkeleton`, {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                      'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                      limit: 5
-                    })
-                  });
-                  
-                  if (res.ok) {
-                    const data = await res.json();
-                    console.log('POST approach successful!', data);
-                    alert('POST API call successful! Check console for details.');
-                    return;
-                  } else {
-                    console.log('Approach 2 failed:', res.status, res.statusText);
-                  }
-                } catch (err) {
-                  console.error('Approach 2 error:', err);
-                }
-                
-                // If we got here, all approaches failed
-                throw new Error('All API call approaches failed');
-              } catch (error) {
-                console.error('Error testing feed API:', error);
-                setApiError(error.message || 'Unknown error');
-              }
-            }}
+            onPress={testDirectAPI}
             style={styles.testButton}
             testID="testDirectApiButton"
           >

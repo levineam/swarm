@@ -42,43 +42,97 @@ export class SwarmFeedAPIDirectOnly implements FeedAPI {
       console.log('SwarmFeedAPIDirectOnly.get: fetching feed directly', {
         isWeb: isWeb,
         feedUri: this.opts.feedUri,
+        timestamp: new Date().toISOString(),
       })
     }
 
     try {
-      // Use a simple, reliable approach for all environments
+      // More reliable approach for all environments
       const feedGeneratorUrl = 'https://swarm-feed-generator.onrender.com'
-
+      
       // Build the URL with proper encoding of the feed parameter
-      const url = `${feedGeneratorUrl}/xrpc/app.bsky.feed.getFeedSkeleton?feed=${encodeURIComponent(
-        this.opts.feedUri,
-      )}&limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`
-
+      const encodedFeedUri = encodeURIComponent(this.opts.feedUri)
+      const url = `${feedGeneratorUrl}/xrpc/app.bsky.feed.getFeedSkeleton?feed=${encodedFeedUri}&limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`
+      
       if (DEBUG.SWARM_LOG_RESPONSES) {
-        console.log('SwarmFeedAPIDirectOnly.get: request URL', url)
+        console.log('SwarmFeedAPIDirectOnly.get: request URL', {
+          url,
+          timestamp: new Date().toISOString(),
+        })
       }
-
-      const res = await fetch(url, {
+      
+      // Use fetch with careful error handling
+      const request = new Request(url, {
         method: 'GET',
         headers: {
-          Accept: 'application/json',
-          Origin: isWeb ? window.location.origin : 'app://swarm',
+          'Accept': 'application/json',
+          'Origin': isWeb ? window.location.origin : 'app://swarm',
         },
+        mode: isWeb ? 'no-cors' : 'cors', // Use no-cors for web to avoid CORS errors
+        cache: 'no-cache',
       })
-
-      if (!res.ok) {
-        console.error('SwarmFeedAPIDirectOnly.get: fetch error', {
-          status: res.status,
-          statusText: res.statusText,
+      
+      // Make the request with detailed logging
+      try {
+        const res = await fetch(request)
+        
+        if (DEBUG.SWARM_LOG_RESPONSES) {
+          console.log('SwarmFeedAPIDirectOnly.get: response status', {
+            status: res.status,
+            statusText: res.statusText,
+            ok: res.ok,
+            headers: Object.fromEntries([...res.headers.entries()]),
+            timestamp: new Date().toISOString(),
+          })
+        }
+        
+        if (!res.ok) {
+          console.error('SwarmFeedAPIDirectOnly.get: fetch error', {
+            status: res.status,
+            statusText: res.statusText,
+            timestamp: new Date().toISOString(),
+          })
+          
+          // Try to get more details from the error response
+          try {
+            const errorText = await res.text()
+            console.error('SwarmFeedAPIDirectOnly.get: error response body', {
+              body: errorText,
+              timestamp: new Date().toISOString(),
+            })
+          } catch (e) {
+            console.error('SwarmFeedAPIDirectOnly.get: could not read error response body')
+          }
+          
+          // Return fallback feed on error
+          return this.createFallbackFeed(limit, cursor)
+        }
+        
+        // Parse the response as JSON
+        const data = await res.json() as FeedGeneratorResponse
+        
+        if (DEBUG.SWARM_LOG_RESPONSES) {
+          console.log('SwarmFeedAPIDirectOnly.get: received data', {
+            feedLength: data.feed?.length || 0,
+            hasCursor: !!data.cursor,
+            timestamp: new Date().toISOString(),
+          })
+        }
+        
+        return await this.processFeedResponse(data, limit, cursor)
+      } catch (fetchError) {
+        console.error('SwarmFeedAPIDirectOnly.get: fetch operation failed', {
+          error: fetchError,
+          url,
+          timestamp: new Date().toISOString(),
         })
-
         return this.createFallbackFeed(limit, cursor)
       }
-
-      const data = (await res.json()) as FeedGeneratorResponse
-      return await this.processFeedResponse(data, limit, cursor)
     } catch (error) {
-      console.error('SwarmFeedAPIDirectOnly.get error:', error)
+      console.error('SwarmFeedAPIDirectOnly.get: unexpected error', {
+        error,
+        timestamp: new Date().toISOString(),
+      })
       return this.createFallbackFeed(limit, cursor)
     }
   }

@@ -480,6 +480,8 @@ function createApi({
       isWeb: isWeb,
       bypassHydration: DEBUG.SWARM_BYPASS_HYDRATION,
       hasFeedUri: !!SWARM_FEED_URI,
+      feedUri: SWARM_FEED_URI,
+      timestamp: new Date().toISOString(),
     })
 
     if (isWeb || DEBUG.SWARM_BYPASS_HYDRATION) {
@@ -488,7 +490,7 @@ function createApi({
       )
       return new SwarmFeedAPIDirectOnly({
         agent,
-        feedUri: SWARM_FEED_URI,
+        feedUri: 'at://did:plc:y5tuxxovcztmqg3dkcpnms5d/app.bsky.feed.generator/swarm-feed',
       })
     } else {
       console.log('createApi: Using standard SwarmFeedAPI with hydration')
