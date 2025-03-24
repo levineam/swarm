@@ -1,6 +1,6 @@
 ---
-description: This rule defines the implementation guidelines for integrating with the AT Protocol in Swarm.
-globs: 
+description: Rules for AT Protocol integration in Swarm
+globs: src/atproto/**/*.ts
 alwaysApply: false
 ---
 # AT Protocol Integration
@@ -32,3 +32,4 @@ src/atproto/**/*.ts
 - src/atproto/feed_generator.ts
 - src/config/did.ts
 - src/labels/label_defs.ts
+ 

@@ -8,13 +8,15 @@ import {
   StyleSheet,
   View,
   ViewStyle,
+  Alert,
+  Text
 } from 'react-native'
 import {AppBskyActorDefs, AppBskyEmbedVideo} from '@atproto/api'
 import {msg} from '@lingui/macro'
 import {useLingui} from '@lingui/react'
 import {useQueryClient} from '@tanstack/react-query'
 
-import {DISCOVER_FEED_URI, KNOWN_SHUTDOWN_FEEDS} from '#/lib/constants'
+import {DISCOVER_FEED_URI, KNOWN_SHUTDOWN_FEEDS, SWARM_FEED_URI} from '#/lib/constants'
 import {useInitialNumToRender} from '#/lib/hooks/useInitialNumToRender'
 import {logEvent} from '#/lib/statsig/statsig'
 import {logger} from '#/logger'
@@ -52,6 +54,8 @@ import {FeedShutdownMsg} from './FeedShutdownMsg'
 import {PostFeedErrorMessage} from './PostFeedErrorMessage'
 import {PostFeedItem} from './PostFeedItem'
 import {ViewFullThread} from './ViewFullThread'
+import {Button} from '#/view/com/util/forms/Button'
+import {usePalette} from '#/lib/hooks/usePalette'
 
 type FeedRow =
   | {
@@ -199,6 +203,40 @@ let PostFeed = ({
   const {gtMobile} = useBreakpoints()
   const {rightNavVisible} = useLayoutBreakpoints()
   const areVideoFeedsEnabled = isNative
+  const pal = usePalette('default')
+  // Add state for API test results
+  const [testResults, setTestResults] = React.useState<string | null>(null)
+
+  // Check if this is a Swarm feed
+  const isSwarm = feedType === 'swarm' || 
+    (feedType === 'feedgen' && feedUriOrActorDid === SWARM_FEED_URI)
+
+  // Test function to directly fetch from the Swarm feed API
+  const testSwarmFeedAPI = async () => {
+    try {
+      setTestResults('Loading...')
+      // Direct request to the feed generator
+      const url = `https://swarm-feed-generator.onrender.com/xrpc/app.bsky.feed.getFeedSkeleton?feed=${encodeURIComponent(SWARM_FEED_URI)}&limit=5`
+      
+      console.log('Testing direct feed skeleton fetch:', url)
+      const response = await fetch(url)
+      
+      if (!response.ok) {
+        throw new Error(`Feed skeleton request failed: ${response.status} ${response.statusText}`)
+      }
+      
+      const data = await response.json()
+      console.log('Feed skeleton data:', data)
+      
+      // Display results in the UI instead of using Alert
+      const resultText = `Got ${data.feed?.length || 0} posts in response\n\n${JSON.stringify(data).substring(0, 200)}...`;
+      console.log(resultText)
+      setTestResults(resultText)
+    } catch (err) {
+      console.error('Test failed:', err)
+      setTestResults(`Error: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
 
   const feedCacheKey = feedParams?.feedCacheKey
   const opts = React.useMemo(
@@ -712,8 +750,23 @@ let PostFeed = ({
 
   return (
     <View testID={testID} style={style}>
+      {isSwarm && (
+        <View style={styles.testButtonContainer}>
+          <Button
+            type="default"
+            label="Test Direct API"
+            onPress={testSwarmFeedAPI}
+          />
+          
+          {testResults && (
+            <View style={styles.testResultsContainer}>
+              <Text style={styles.testResultsText}>{testResults}</Text>
+            </View>
+          )}
+        </View>
+      )}
+
       <List
-        testID={testID ? `${testID}-flatlist` : undefined}
         ref={scrollElRef}
         data={feedItems}
         keyExtractor={item => item.key}
@@ -750,6 +803,26 @@ export {PostFeed}
 
 const styles = StyleSheet.create({
   feedFooter: {paddingTop: 20},
+  testButtonContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    alignItems: 'center',
+  },
+  testResultsContainer: {
+    marginTop: 8,
+    padding: 10,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 4,
+    maxHeight: 300,
+    overflow: 'hidden',
+    width: '100%',
+  },
+  testResultsText: {
+    fontSize: 12,
+    fontFamily: 'monospace',
+  },
 })
 
 function isThreadParentAt<T>(arr: Array<T>, i: number) {

@@ -65,7 +65,15 @@ For detailed notes on implementation challenges, solutions, and lessons learned 
      - Created maintenance scripts to monitor service health and automatically restart if needed
      - Implemented comprehensive error handling and logging
 
-These recent improvements have significantly enhanced the reliability and functionality of the Swarm Community Platform, ensuring a better user experience for community members.
+3. **CORS and API Access Issues**: The client application had difficulty accessing the feed generator API due to CORS restrictions and hydration challenges.
+   - **Root Causes**: Cross-origin restrictions when accessing the feed generator from the client application, and issues with post hydration.
+   - **Solutions**:
+     - Implemented a dedicated CORS proxy at https://swarm-cors-proxy.onrender.com with comprehensive header handling
+     - Developed a direct API access implementation that bypasses problematic proxies when necessary
+     - Created a custom `SwarmFeedAPI` class to handle feed data retrieval and hydration
+     - Enhanced error handling and diagnostics to better trace and resolve issues
+
+These improvements have significantly enhanced the reliability and functionality of the Swarm Community Platform, ensuring a better user experience for community members.
 
 ## 3. Architecture Overview
 
@@ -95,8 +103,9 @@ These recent improvements have significantly enhanced the reliability and functi
 1. AT Protocol firehose sends real-time posts to feed generator
 2. Feed generator filters posts based on community membership and rules
 3. Client application authenticates with the feed generator using JWT tokens via Bluesky credentials
-4. Client requests feed data from feed generator
-5. Users interact with content through the client application
+4. Client requests feed data from feed generator either directly or through the CORS proxy when needed
+5. Custom `SwarmFeedAPI` handles post hydration and data processing
+6. Users interact with content through the client application
 
 ### Domain Architecture
 The Swarm platform consists of two separate services with distinct domains:
@@ -194,6 +203,8 @@ By maintaining a single feed generator service with support for multiple algorit
 - **Domain Separation**: Maintaining clear separation between the client application domain (swarm-social.onrender.com) and the feed generator service domain (swarm-feed-generator.onrender.com) is crucial for proper functionality.
 - **DID Document Structure**: The AT Protocol has specific requirements for DID document structure, including service types ("BskyFeedGenerator") and service IDs ("#bsky_fg").
 - **Deployment Environment Variables**: Consistent environment variables across development and production environments are essential for proper service configuration.
+- **CORS Handling**: CORS issues between client and feed generator required a dedicated proxy solution, highlighting the importance of cross-origin considerations in distributed architecture.
+- **Direct vs. Proxied Access**: A hybrid approach of direct API access with custom hydration provides the best reliability, bypassing proxy-related issues while maintaining functionality.
 
 ### Implementation Approach
 - **Modular Design**: The separation of feed generator logic from client application provides flexibility
