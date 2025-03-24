@@ -48,11 +48,11 @@ export class SwarmFeedAPIDirectOnly implements FeedAPI {
 
     try {
       // More reliable approach for all environments
-      const feedGeneratorUrl = 'https://swarm-feed-generator.onrender.com'
+      const proxyUrl = 'https://swarm-cors-proxy.onrender.com'
       
       // Build the URL with proper encoding of the feed parameter
       const encodedFeedUri = encodeURIComponent(this.opts.feedUri)
-      const url = `${feedGeneratorUrl}/xrpc/app.bsky.feed.getFeedSkeleton?feed=${encodedFeedUri}&limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`
+      const url = `${proxyUrl}/feed/getFeedSkeleton?feed=${encodedFeedUri}&limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`
       
       if (DEBUG.SWARM_LOG_RESPONSES) {
         console.log('SwarmFeedAPIDirectOnly.get: request URL', {
@@ -295,8 +295,8 @@ export class SwarmFeedAPIDirectOnly implements FeedAPI {
   async peekLatest(): Promise<AppBskyFeedDefs.FeedViewPost> {
     try {
       // Fetch just one post to peek at the latest
-      const feedGeneratorUrl = 'https://swarm-feed-generator.onrender.com'
-      const url = `${feedGeneratorUrl}/xrpc/app.bsky.feed.getFeedSkeleton?feed=${encodeURIComponent(
+      const proxyUrl = 'https://swarm-cors-proxy.onrender.com'
+      const url = `${proxyUrl}/feed/getFeedSkeleton?feed=${encodeURIComponent(
         this.opts.feedUri,
       )}&limit=1`
 

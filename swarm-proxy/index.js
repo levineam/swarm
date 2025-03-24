@@ -1,12 +1,11 @@
-import {Buffer} from 'node:buffer'
-
-import cors from 'cors'
-import express from 'express'
-import fetch from 'node-fetch'
+const express = require('express')
+const axios = require('axios')
+const cors = require('cors')
+const {Buffer} = require('node:buffer')
 
 const app = express()
 const PORT = process.env.PORT || 3000
-const FEED_GENERATOR_URL = 'https://swarm-feed-generator.onrender.com'
+const FEED_GENERATOR_URL = process.env.FEED_GENERATOR_URL || 'https://swarm-feed-generator.onrender.com'
 
 // Configure CORS middleware
 app.use(
@@ -122,7 +121,136 @@ app.all('*', async (req, res) => {
   }
 })
 
+// Direct Feed Generator Proxy Route
+app.get('/feed/getFeedSkeleton', async (req, res) => {
+  try {
+    // Extract query parameters
+    const params = new URLSearchParams()
+    Object.entries(req.query).forEach(([key, value]) => {
+      if (value !== undefined) {
+        params.append(key, value)
+      }
+    })
+    
+    // Build URL for the feed generator
+    const url = `${FEED_GENERATOR_URL}/xrpc/app.bsky.feed.getFeedSkeleton?${params.toString()}`
+    
+    console.log(`[${new Date().toISOString()}] Proxying feed request to: ${url}`)
+    
+    // Make request to feed generator
+    const response = await axios.get(url, {
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'Swarm-Feed-Proxy',
+      },
+      validateStatus: () => true, // Don't throw on non-2xx status
+    })
+    
+    // Copy status and headers from feed generator response
+    res.status(response.status)
+    
+    // Copy content type from original response
+    if (response.headers['content-type']) {
+      res.header('Content-Type', String(response.headers['content-type']))
+    }
+    
+    // Send the body of the response
+    res.send(response.data)
+    
+    console.log(`[${new Date().toISOString()}] Proxied feed response status: ${response.status}`)
+  } catch (error) {
+    console.error(`[${new Date().toISOString()}] Error proxying feed request:`, error.message)
+    
+    res.status(500).json({
+      error: 'ProxyError',
+      message: `Error proxying feed request: ${error.message || 'Unknown error'}`
+    })
+  }
+})
+
+// Handle OPTIONS requests for direct, explicit CORS support
+app.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', '*')
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization, Origin')
+  res.sendStatus(200)
+})
+
+// Base proxy handler for all feed generator API endpoints
+app.all('/xrpc/*', async (req, res) => {
+  try {
+    const targetUrl = `${FEED_GENERATOR_URL}${req.url}`
+    console.log(`[${new Date().toISOString()}] Proxying ${req.method} request to: ${targetUrl}`)
+    
+    // Prepare headers and forward as much as possible from the original request
+    const headers = {
+      ...req.headers,
+    }
+    
+    // Remove headers that should be set by axios or might cause issues
+    delete headers.host
+    delete headers.connection
+    delete headers['content-length']
+    
+    // Set up configuration for the request
+    const config = {
+      method: req.method,
+      url: targetUrl,
+      headers: headers,
+      validateStatus: () => true, // Don't throw on error status codes
+    }
+    
+    // Include body for POST requests
+    if (req.method === 'POST' && req.body) {
+      config.data = req.body
+    }
+    
+    // Make the request to the feed generator
+    const response = await axios(config)
+    
+    // Set response headers
+    Object.entries(response.headers).forEach(([key, value]) => {
+      // Avoid setting headers that might conflict with Express's own handling
+      if (!['connection', 'content-length', 'transfer-encoding'].includes(key.toLowerCase())) {
+        res.set(key, value)
+      }
+    })
+    
+    // Always ensure CORS headers are present
+    res.header('Access-Control-Allow-Origin', '*')
+    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization, Origin')
+    
+    // Set status code and send response
+    res.status(response.status).send(response.data)
+    
+    console.log(`[${new Date().toISOString()}] Proxied response status: ${response.status}`)
+  } catch (error) {
+    console.error(`[${new Date().toISOString()}] Proxy error:`, error.message)
+    
+    // Ensure CORS headers are present even on error
+    res.header('Access-Control-Allow-Origin', '*')
+    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization, Origin')
+    
+    res.status(500).json({
+      error: 'ProxyError',
+      message: `Failed to proxy request: ${error.message}`
+    })
+  }
+})
+
+// Simple status endpoint
+app.get('/', (req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'Swarm CORS Proxy',
+    timestamp: new Date().toISOString(),
+    feedGeneratorUrl: FEED_GENERATOR_URL
+  })
+})
+
 app.listen(PORT, () => {
-  console.log(`CORS Proxy server running on port ${PORT}`)
-  console.log(`Proxying requests to: ${FEED_GENERATOR_URL}`)
+  console.log(`[${new Date().toISOString()}] Proxy server running on port ${PORT}`)
+  console.log(`[${new Date().toISOString()}] Proxying requests to: ${FEED_GENERATOR_URL}`)
 })

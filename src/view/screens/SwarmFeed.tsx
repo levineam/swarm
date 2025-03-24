@@ -149,21 +149,20 @@ export function SwarmFeedScreen({
       setApiError(null);
       
       // Show clear console messages
-      console.log('Testing direct API call to feed generator');
+      console.log('Testing direct API call to feed generator via proxy');
       
-      // Use a more reliable way to fetch the skeleton
-      const feedGeneratorUrl = 'https://swarm-feed-generator.onrender.com';
+      // Use our proxy endpoint for reliable CORS handling
+      const proxyUrl = 'https://swarm-cors-proxy.onrender.com';
       const encodedFeedUri = encodeURIComponent(FEED_URI);
-      const url = `${feedGeneratorUrl}/xrpc/app.bsky.feed.getFeedSkeleton?feed=${encodedFeedUri}&limit=3`;
+      const url = `${proxyUrl}/feed/getFeedSkeleton?feed=${encodedFeedUri}&limit=3`;
       
       console.log('Fetching from URL:', url);
       
-      // Create custom headers to avoid CORS issues
+      // Create custom headers
       const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
-          'Origin': window.location.origin
         },
         mode: 'cors',
         cache: 'no-cache',
