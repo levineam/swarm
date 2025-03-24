@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useCallback } from 'react'
 import {StyleSheet, View, Text, Pressable} from 'react-native'
 import {RichText} from '@atproto/api'
 import {msg} from '@lingui/macro'
@@ -15,6 +15,7 @@ import {isWeb} from '#/platform/detection'
 import {SwarmFeedTest} from '../debug/SwarmFeedTest'
 import {FeedPage} from '#/view/com/feeds/FeedPage'
 import {SavedFeedSourceInfo} from '#/state/queries/feed'
+import {FEED_GENERATOR_URL} from '#/lib/api/feed/constants'
 
 // Create a minimal mock version of the SavedFeedSourceInfo that works without the full hydration
 const MOCK_SWARM_FEED_INFO: SavedFeedSourceInfo = {
@@ -149,23 +150,20 @@ export function SwarmFeedScreen({
       setApiError(null);
       
       // Show clear console messages
-      console.log('Testing direct API call to feed generator via proxy');
+      console.log('Testing direct API call to feed generator');
       
-      // Use our proxy endpoint for reliable CORS handling
-      const proxyUrl = 'https://swarm-cors-proxy.onrender.com';
+      // Use direct connection to feed generator
       const encodedFeedUri = encodeURIComponent(FEED_URI);
-      const url = `${proxyUrl}/feed/getFeedSkeleton?feed=${encodedFeedUri}&limit=3`;
+      const url = `${FEED_GENERATOR_URL}/xrpc/app.bsky.feed.getFeedSkeleton?feed=${encodedFeedUri}&limit=3`;
       
       console.log('Fetching from URL:', url);
       
-      // Create custom headers
+      // Basic fetch without extra options
       const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
-        },
-        mode: 'cors',
-        cache: 'no-cache',
+        }
       });
       
       if (!response.ok) {

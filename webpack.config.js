@@ -2,6 +2,7 @@ const createExpoWebpackConfigAsync = require('@expo/webpack-config')
 const {withAlias} = require('@expo/webpack-config/addons')
 const ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin')
 const {BundleAnalyzerPlugin} = require('webpack-bundle-analyzer')
+const path = require('path')
 
 const GENERATE_STATS = process.env.EXPO_PUBLIC_GENERATE_STATS === '1'
 const OPEN_ANALYZER = process.env.EXPO_PUBLIC_OPEN_ANALYZER === '1'
@@ -22,6 +23,36 @@ module.exports = async function (env, argv) {
     'react-native$': 'react-native-web',
     'react-native-webview': 'react-native-web-webview',
   })
+  
+  // Add resolve fallbacks for node.js core modules
+  config.resolve.fallback = {
+    ...config.resolve.fallback,
+    fs: false,
+    path: false,
+    http: false,
+    https: false,
+    crypto: false,
+    zlib: false,
+    stream: false,
+    querystring: false,
+    url: false,
+    net: false,
+    async_hooks: false,
+    timers: false,
+    child_process: false,
+    os: false,
+    constants: false,
+    events: false,
+    util: false,
+  }
+  
+  // Add settings to ignore specific modules in browser build 
+  config.module.rules.push({
+    test: /src\/server\/.*\.ts$/,
+    include: path.resolve(__dirname, 'src/server'),
+    use: 'null-loader'
+  })
+  
   config.module.rules = [
     ...(config.module.rules || []),
     reactNativeWebWebviewConfiguration,
