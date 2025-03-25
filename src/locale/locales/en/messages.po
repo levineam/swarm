@@ -4738,8 +4738,8 @@ msgstr ""
 msgid "No one but the author can quote this post."
 msgstr ""
 
-#: src/view/screens/SwarmFeed.tsx:86
-#: src/view/screens/SwarmFeed.tsx:96
+#: src/view/screens/SwarmFeed.tsx:87
+#: src/view/screens/SwarmFeed.tsx:97
 msgid "No posts found. Check back soon!"
 msgstr ""
 
@@ -7464,7 +7464,7 @@ msgstr ""
 msgid "There was an issue fetching notifications. Tap here to try again."
 msgstr ""
 
-#: src/view/com/posts/PostFeed.tsx:592
+#: src/view/com/posts/PostFeed.tsx:630
 msgid "There was an issue fetching posts. Tap here to try again."
 msgstr ""
 
@@ -8996,8 +8996,8 @@ msgstr ""
 msgid "You've found some people to follow"
 msgstr ""
 
-#: src/view/screens/SwarmFeed.tsx:87
-#: src/view/screens/SwarmFeed.tsx:106
+#: src/view/screens/SwarmFeed.tsx:88
+#: src/view/screens/SwarmFeed.tsx:107
 msgid "You've reached the end of the Swarm Feed"
 msgstr ""
 
