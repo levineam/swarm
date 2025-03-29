@@ -2,10 +2,19 @@ const express = require('express')
 const axios = require('axios')
 const cors = require('cors')
 const {Buffer} = require('node:buffer')
+const fetch = require('node-fetch')
+require('dotenv').config()
 
 const app = express()
 const PORT = process.env.PORT || 3000
 const FEED_GENERATOR_URL = process.env.FEED_GENERATOR_URL || 'https://swarm-feed-generator.onrender.com'
+
+if (!FEED_GENERATOR_URL) {
+  console.error('Error: FEED_GENERATOR_URL environment variable is not set.')
+  process.exit(1)
+}
+
+console.log(`Starting CORS proxy for target: ${FEED_GENERATOR_URL}`)
 
 // Configure CORS middleware
 app.use(
@@ -53,71 +62,75 @@ app.use((req, res, next) => {
 
 // Proxy all requests to the feed generator
 app.all('*', async (req, res) => {
-  const url = `${FEED_GENERATOR_URL}${req.originalUrl}`
-  console.log(`Forwarding request to: ${url}`)
+  const targetPath = req.originalUrl
+  const url = `${FEED_GENERATOR_URL}${targetPath}`
+
+  console.log(`\n--- Incoming Request ---`)
+  console.log(`Timestamp: ${new Date().toISOString()}`)
+  console.log(`Method: ${req.method}`)
+  console.log(`Path: ${targetPath}`)
+  console.log(`Origin: ${req.headers.origin}`)
+  console.log('Incoming Headers:', JSON.stringify(req.headers, null, 2))
+
+  const headers = {
+    // Forward essential headers
+    'Accept': req.headers.accept || 'application/json', // Default to application/json
+    'Content-Type': req.headers['content-type'] || 'application/json', 
+    'User-Agent': req.headers['user-agent'],
+  }
+
+  // Forward Authorization header if present
+  if (req.headers.authorization) {
+    headers['Authorization'] = req.headers.authorization
+  }
+  
+  // Add Bluesky specific headers if present
+  if (req.headers['atproto-proxy']) {
+    headers['atproto-proxy'] = req.headers['atproto-proxy']
+  }
+  if (req.headers['x-atproto-accept-labelers']) {
+    headers['x-atproto-accept-labelers'] = req.headers['x-atproto-accept-labelers']
+  }
+
+  console.log(`\n--- Forwarding Request ---`)
+  console.log(`Target URL: ${url}`)
+  console.log('Forwarding Headers:', JSON.stringify(headers, null, 2))
 
   try {
-    // Create headers object without host, connection, etc.
-    const headers = {...req.headers}
-    delete headers.host
-    delete headers.connection
-    delete headers['content-length']
-
-    // Add explicit accept header if not present
-    if (!headers.accept) {
-      headers.accept = 'application/json'
-    }
-
-    // Forward the request to the feed generator
     const response = await fetch(url, {
       method: req.method,
       headers: headers,
-      body:
-        req.method !== 'GET' && req.method !== 'HEAD' && req.body
-          ? JSON.stringify(req.body)
-          : undefined,
+      body: req.method !== 'GET' && req.method !== 'HEAD' ? req : undefined,
+      // Important: Don't automatically redirect, let the client handle it
+      redirect: 'manual' 
     })
 
-    console.log(`Received response with status: ${response.status}`)
+    console.log(`\n--- Received Response ---`)
+    console.log(`Status: ${response.status}`)
+    console.log(`Status Text: ${response.statusText}`)
+    console.log('Response Headers:', JSON.stringify(response.headers.raw(), null, 2))
 
-    // Set status code from the feed generator response
+    // Forward the response status, headers, and body
     res.status(response.status)
-
-    // Get all headers from the response
-    const responseHeaders = Object.fromEntries(response.headers.entries())
-    console.log('Response headers:', responseHeaders)
-
-    // Forward headers from the feed generator response
-    for (const [key, value] of response.headers) {
-      // Skip setting headers that would conflict with CORS headers
-      if (
-        ![
-          'access-control-allow-origin',
-          'access-control-allow-methods',
-          'access-control-allow-headers',
-          'access-control-allow-credentials',
-          'access-control-max-age',
-        ].includes(key.toLowerCase())
-      ) {
-        res.setHeader(key, value)
+    
+    // Copy all headers from the target response to the proxy response
+    // Ensure CORS headers are present (though cors() middleware should handle most)
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    response.headers.forEach((value, name) => {
+      // Avoid setting headers that cause issues (like content-encoding if body is transformed)
+      if (name.toLowerCase() !== 'content-encoding' && name.toLowerCase() !== 'transfer-encoding') {
+         res.setHeader(name, value)
       }
-    }
-
-    // Send the response body
-    const data = await response.arrayBuffer()
-    const contentType =
-      response.headers.get('content-type') || 'application/json'
-    res.setHeader('Content-Type', contentType)
-
-    res.send(Buffer.from(data))
-    console.log('Response sent successfully')
-  } catch (error) {
-    console.error('Proxy error:', error)
-    // Still maintain CORS headers even in error response
-    res.status(500).json({
-      error: 'Error proxying request to feed generator',
-      message: error.message,
     })
+
+    // Pipe the response body
+    response.body.pipe(res)
+
+  } catch (error) {
+    console.error(`\n--- Proxy Error ---`)
+    console.error(`Timestamp: ${new Date().toISOString()}`)
+    console.error('Error fetching from target:', error)
+    res.status(502).send('Proxy error: Unable to connect to the target service.')
   }
 })
 
